@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FocusFlow - Pomodoro & Tasks</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <style>
+        html, body { height: 100%; overflow: hidden; }
+        body { font-family: 'Inter', sans-serif; overscroll-behavior: none; background-color: #f3f4f6; }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #a0aec0; border-radius: 10px; border: 2px solid #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #718096; }
+
+        .icon { display: inline-block; vertical-align: middle; width: 1.25rem; height: 1.25rem; stroke-width: 2; stroke: currentColor; fill: none; }
+        .icon-sm { width: 1rem; height: 1rem; }
+        .icon-xs { width: 0.75rem; height: 0.75rem; }
+        button .icon { margin-bottom: 0.1em; }
+
+        button { transition: background-color 0.2s ease-in-out, transform 0.15s ease-in-out, box-shadow 0.2s ease; }
+        button:hover { transform: translateY(-1px); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1); }
+        button:active { transform: scale(0.97); box-shadow: inset 0 2px 4px 0 rgba(0,0,0,0.06); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        .completed { text-decoration: line-through; color: #9ca3af; }
+        .task-pomodoros { margin-left: 0.5rem; font-size: 0.9em; color: #ef4444; }
+        .active-task { border-left-width: 4px; border-left-color: #4f46e5; background-color: #eef2ff; }
+
+        .tab-button { padding: 0.5rem 1rem; border-radius: 0.375rem; font-weight: 500; color: #4b5563; cursor: pointer; transition: background-color 0.2s, color 0.2s, transform 0.15s ease; }
+        .tab-button:hover { background-color: #e5e7eb; transform: translateY(-1px); }
+        .tab-button.active { background-color: #4f46e5; color: white; transform: none; }
+
+        .project-group { margin-bottom: 1rem; }
+        .project-header { font-weight: 600; color: #374151; margin-bottom: 0.5rem; padding-bottom: 0.25rem; border-bottom: 1px solid #e5e7eb; }
+        .task-item { cursor: grab; transition: box-shadow 0.2s ease; }
+        .task-item:hover { box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px -1px rgba(0,0,0,0.1); }
+        .task-item:active { cursor: grabbing; }
+        .drop-zone-active { background-color: #dbeafe; border: 2px dashed #93c5fd; }
+
+        .project-list-item { display: flex; align-items: center; justify-content: space-between; padding: 0.25rem 0.5rem; border-radius: 0.25rem; }
+        .project-list-item:hover { background-color: #f3f4f6; }
+        .project-color-swatch { width: 1rem; height: 1rem; border-radius: 0.25rem; margin-right: 0.5rem; border: 1px solid rgba(0,0,0,0.1); }
+        .project-delete-btn { color: #ef4444; opacity: 0.5; }
+        .project-delete-btn:hover { opacity: 1; }
+
+        /* Log Record Styles */
+        .log-record-item { display: flex; align-items: stretch; padding: 0.75rem 0.5rem; border-bottom: 1px solid #e5e7eb; gap: 0.75rem; }
+        .log-record-item:last-child { border-bottom: none; }
+        .log-record-time { width: 6rem; text-align: right; font-size: 0.8rem; color: #6b7280; flex-shrink: 0; padding-top: 0.1rem; }
+        .log-record-line-and-details { flex-grow: 1; border-left: 3px solid #d1d5db; padding-left: 0.75rem; display: flex; justify-content: space-between; align-items: flex-start; }
+        .log-record-details {}
+        .log-record-task { font-weight: 500; color: #1f2937; margin-bottom: 0.1rem; }
+        .log-record-meta { font-size: 0.75rem; color: #4b5563; }
+        .log-record-project { display: inline-block; padding: 0.1rem 0.4rem; border-radius: 0.25rem; font-size: 0.7rem; margin-left: 0.5rem; color: white; text-shadow: 1px 1px 1px rgba(0,0,0,0.1); }
+        .log-record-delete { color: #ef4444; flex-shrink: 0; padding-top: 0.1rem; }
+        .log-record-delete:hover { color: #dc2626; transform: scale(1.1); }
+
+
+        #manual-log-form { background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; margin-top: 1rem; }
+        .time-suggestion-btn { background-color: #e0e7ff; color: #4338ca; font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 9999px; margin: 0 2px; }
+        .time-suggestion-btn:hover { background-color: #c7d2fe; }
+
+        .view { transition: opacity 0.3s ease-in-out; }
+        .view-hidden { opacity: 0; pointer-events: none; position: absolute; width: 100%; }
+        .view-visible { opacity: 1; position: relative; }
+
+
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
+        .modal-content { background-color: #fefefe; margin: auto; padding: 1.5rem; border: 1px solid #888; width: 90%; max-width: 500px; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); }
+        .modal-close-button { color: #aaa; position: absolute; top: 0.5rem; right: 0.75rem; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .modal-close-button:hover, .modal-close-button:focus { color: black; text-decoration: none; }
+
+        #confirmation-message { white-space: pre-wrap; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        .animate-fade-out { animation: fadeOut 0.3s ease-in forwards; }
+
+        @keyframes slideInRightFadeIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        .animate-log-entry { animation: slideInRightFadeIn 0.4s ease-out forwards; }
+
+        input[type="color"] { padding: 0.1rem; height: 2.5rem; width: 3rem; border-radius: 0.375rem; border: 1px solid #d1d5db; cursor: pointer; }
+        input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; }
+
+        /* Summary Styles */
+        #log-summary-column ul { list-style: disc; padding-left: 1.25rem; }
+        #log-summary-column li { margin-bottom: 0.25rem; }
+        #log-summary-column h5 { font-weight: 600; margin-top: 0.5rem; display: flex; align-items: center; }
+        #project-pie-chart-container { height: 250px; }
+
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div class="flex flex-col h-screen">
+
+        <header class="bg-white shadow-sm p-4 flex-shrink-0"> <h1 class="text-2xl font-bold text-center text-indigo-700">FocusFlow</h1> </header>
+        <div class="flex justify-center space-x-4 border-b border-gray-200 bg-white p-3 flex-shrink-0"> <button id="tab-timer" class="tab-button active">Timer & Tasks</button> <button id="tab-log" class="tab-button">Daily Log</button> </div>
+
+        <main class="flex-grow overflow-hidden bg-white md:p-4 relative"> <div class="h-full">
+                <div id="view-timer" class="view view-visible h-full flex flex-col md:flex-row gap-4">
+                    <div class="w-full md:w-1/2 lg:w-1/3 flex flex-col p-4 md:p-0 overflow-y-auto custom-scrollbar"> <div class="text-center bg-indigo-50 p-6 rounded-lg shadow-inner mb-6 flex-shrink-0">
+                           <div id="timer-status" class="mb-2"> <span id="timer-mode" class="text-lg font-semibold text-indigo-600">Work</span> <span id="focused-task-display" class="text-sm text-gray-600 ml-2"></span> </div>
+                            <div class="relative w-48 h-48 mx-auto mb-4"> <svg class="w-full h-full" viewBox="0 0 100 100"> <circle class="text-gray-300 stroke-current" stroke-width="8" cx="50" cy="50" r="42" fill="transparent"></circle> <circle id="progress-ring" class="text-indigo-600 stroke-current" stroke-width="8" cx="50" cy="50" r="42" fill="transparent" stroke-linecap="round" transform="rotate(-90 50 50)" style="stroke-dasharray: 264; stroke-dashoffset: 264; transition: stroke-dashoffset 0.3s linear, stroke 0.3s ease;"> </circle> </svg> <div id="timer-display" class="absolute inset-0 flex items-center justify-center text-4xl font-bold text-indigo-800"> 25:00 </div> </div>
+                            <div class="flex justify-center space-x-2 md:space-x-3"> <button id="start-pause-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow flex items-center justify-center space-x-1"> <span id="start-pause-icon-wrapper"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="icon"><polygon points="6 3 20 12 6 21 6 3"/></svg></span> <span class="button-text text-sm md:text-base">Start</span> </button> <button id="reset-button" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg shadow flex items-center justify-center space-x-1"> <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg> <span class="text-sm md:text-base">Reset</span> </button> <button id="skip-button" class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-lg shadow flex items-center justify-center space-x-1"> <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="icon"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg> <span class="text-sm md:text-base">Skip</span> </button> <button id="settings-button" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-2 rounded-lg shadow flex items-center justify-center"> <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" class="icon icon-sm"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.51a2 2 0 0 1 1-1.72l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg> </button> </div>
+                        </div>
+                        <div class="space-y-4 mb-6 flex-shrink-0">
+                            <h2 class="text-xl font-semibold text-gray-700">Add Task</h2>
+                            <div class="flex items-end space-x-2"> <div class="flex-grow"> <label for="new-task-input" class="sr-only">Task description</label> <input type="text" id="new-task-input" placeholder="Task description..." class="w-full border-gray-300 rounded-lg shadow-sm p-2"> </div> <div class="w-1/3"> <label for="new-task-project" class="sr-only">Project</label> <select id="new-task-project" class="w-full border-gray-300 rounded-lg shadow-sm p-2 text-sm"> </select> </div> <button id="add-task-button" class="bg-green-500 hover:bg-green-600 text-white font-semibold p-2 rounded-lg shadow flex-shrink-0"> <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" class="icon"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> </button> </div>
+                        </div>
+                         <div class="space-y-2 flex-shrink-0">
+                            <h2 class="text-lg font-semibold text-gray-700">Manage Projects</h2>
+                            <div class="flex items-center space-x-2"> <input type="text" id="new-project-input" placeholder="New project name..." class="flex-grow border-gray-300 rounded-lg shadow-sm p-2"> <input type="color" id="new-project-color" value="#6366f1" title="Choose project color"> <button id="add-project-button" class="bg-purple-500 hover:bg-purple-600 text-white font-semibold p-2 rounded-lg shadow flex-shrink-0"> <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" class="icon icon-sm"><path d="M5 12h14"/><path d="M12 5v14"/></svg> </button> </div>
+                            <div id="project-list" class="mt-3 space-y-1 text-sm max-h-32 overflow-y-auto custom-scrollbar"> <p class="text-gray-500 italic">Loading projects...</p> </div>
+                         </div>
+                    </div>
+                    <div class="w-full md:w-1/2 lg:w-2/3 flex flex-col overflow-hidden p-4 md:p-0 md:pl-4"> <h2 class="text-xl font-semibold text-gray-700 mb-4 flex-shrink-0">Tasks by Project</h2> <div id="task-list-container" class="flex-grow overflow-y-auto custom-scrollbar border rounded-lg bg-gray-50 p-3 space-y-4"> <p id="task-list-empty" class="text-gray-500 text-center italic">Loading tasks...</p> </div> </div>
+                </div>
+
+                <div id="view-log" class="view view-hidden h-full flex flex-col md:flex-row gap-4 p-4 md:p-0">
+                    <div class="w-full md:w-2/3 lg:w-3/4 flex flex-col overflow-hidden">
+                         <div class="flex flex-wrap justify-between items-center gap-2 mb-4 flex-shrink-0"> <button id="log-prev-day" class="p-2 rounded-md hover:bg-gray-200 text-gray-600" title="Previous Day"> <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" class="icon icon-sm"><polyline points="15 18 9 12 15 6"/></svg> </button>
+                             <div class="text-center flex-grow md:flex-grow-0 order-first md:order-none w-full md:w-auto mb-2 md:mb-0">
+                                <h2 id="log-date-display" class="text-lg font-semibold text-gray-700"></h2>
+                                <button id="log-today" class="text-sm text-indigo-600 hover:underline">Go to Today</button>
+                             </div>
+                             <div class="flex items-center space-x-1">
+                                 <label for="log-jump-date" class="text-sm text-gray-600">Jump to:</label>
+                                 <input type="date" id="log-jump-date" class="border-gray-300 rounded-md shadow-sm p-1 text-sm">
+                             </div>
+                             <button id="log-next-day" class="p-2 rounded-md hover:bg-gray-200 text-gray-600" title="Next Day"> <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" class="icon icon-sm"><polyline points="9 18 15 12 9 6"/></svg> </button>
+                         </div>
+                         <div class="mb-4 text-right flex-shrink-0"> <button id="toggle-manual-log-form" class="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium py-1 px-3 rounded-md shadow-sm">Add Manual Entry</button> </div>
+                         <form id="manual-log-form" style="display: none;" class="space-y-3 mb-4 flex-shrink-0 border border-gray-200 p-4 rounded-lg bg-gray-50">
+                            <h3 class="text-md font-semibold text-gray-800 border-b pb-1">Log Manual Entry</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div> <label for="manual-log-task" class="block text-sm font-medium text-gray-700">Task Name:</label> <input type="text" id="manual-log-task" list="task-suggestions" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 text-sm"> <datalist id="task-suggestions"></datalist> </div>
+                                 <div> <label for="manual-log-project" class="block text-sm font-medium text-gray-700">Project:</label> <select id="manual-log-project" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 text-sm"></select> </div>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div> <label for="manual-log-date" class="block text-sm font-medium text-gray-700">Date:</label> <input type="date" id="manual-log-date" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 text-sm"> </div>
+                                <div> <label for="manual-log-start" class="block text-sm font-medium text-gray-700">Start Time:</label> <input type="time" id="manual-log-start" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 text-sm"> </div>
+                                <div> <label for="manual-log-end" class="block text-sm font-medium text-gray-700">End Time:</label> <input type="time" id="manual-log-end" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 text-sm"> </div>
+                            </div>
+                            <div class="text-xs text-gray-600 text-center space-x-1" id="time-suggestion-container">
+                                <span id="time-suggestion-label">Quick Add:</span>
+                                <button type="button" class="time-suggestion-btn" data-duration="15">Last 15m</button>
+                                <button type="button" class="time-suggestion-btn" data-duration="30">Last 30m</button>
+                                <button type="button" class="time-suggestion-btn" data-duration="45">Last 45m</button>
+                                <button type="button" class="time-suggestion-btn" data-duration="60">Last 1h</button>
+                                <button type="button" class="time-suggestion-btn" data-duration="120">Last 2h</button>
+                            </div>
+                             <div class="flex justify-end space-x-2 pt-2"> <button type="button" id="cancel-manual-log" class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium py-1 px-3 rounded-md">Cancel</button> <button type="submit" id="save-manual-log" class="bg-green-500 hover:bg-green-600 text-white text-sm font-medium py-1 px-3 rounded-md shadow-sm">Save Log</button> </div>
+                         </form>
+                         <div id="log-record-list-container" class="flex-grow overflow-y-auto custom-scrollbar border rounded-lg bg-gray-50 p-2">
+                             <div id="log-record-list"></div>
+                             <p id="log-empty-message" class="text-gray-500 text-center italic p-4" style="display: none;">No logs for this day. Zzz...</p>
+                         </div>
+                    </div>
+                    <div id="log-summary-column" class="w-full md:w-1/3 lg:w-1/4 flex-shrink-0 flex flex-col border rounded-lg bg-gray-50 p-4 overflow-y-auto custom-scrollbar mt-4 md:mt-0">
+                         <h3 class="text-lg font-semibold mb-3 text-gray-700 border-b pb-1 flex-shrink-0">Daily Summary</h3>
+                         <div id="project-pie-chart-container" class="w-full h-64 mx-auto mb-4 flex-shrink-0">
+                             <canvas id="project-pie-chart-canvas"></canvas>
+                         </div>
+                         <h4 class="text-md font-semibold mt-4 mb-2 text-gray-600 border-b pb-1 flex-shrink-0">Logged Tasks</h4>
+                         <div id="verbal-summary" class="text-sm space-y-3 flex-grow">
+                            <p class="text-gray-500 italic">No summary available.</p>
+                         </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+    </div>
+
+    <div id="settings-modal" class="modal"> <div class="modal-content relative"> <span id="close-modal-button" class="modal-close-button">&times;</span> <h2 class="text-xl font-semibold mb-4 text-gray-800">Settings</h2> <div class="space-y-4"> <div><label for="work-duration" class="block text-sm font-medium text-gray-700">Work (min):</label><input type="number" id="work-duration" min="1" value="25" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2"></div> <div><label for="short-break-duration" class="block text-sm font-medium text-gray-700">Short Break (min):</label><input type="number" id="short-break-duration" min="1" value="5" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2"></div> <div><label for="long-break-duration" class="block text-sm font-medium text-gray-700">Long Break (min):</label><input type="number" id="long-break-duration" min="1" value="15" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2"></div> <div><label for="long-break-interval" class="block text-sm font-medium text-gray-700">Long Break Interval:</label><input type="number" id="long-break-interval" min="1" value="4" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2"></div> <div class="flex items-center"><input type="checkbox" id="sound-enabled" checked class="h-4 w-4 text-indigo-600 rounded"><label for="sound-enabled" class="ml-2 block text-sm text-gray-900">Sound</label></div> </div> <div class="mt-6 flex justify-end"><button id="save-settings-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow">Save</button></div> </div> </div>
+
+     <div id="interrupted-log-confirmation-modal" class="modal">
+        <div class="modal-content relative">
+            <span id="close-interrupted-log-confirmation-button" class="modal-close-button">&times;</span>
+            <h2 class="text-lg font-semibold mb-3 text-gray-800">Task Completed!</h2>
+            <p class="mb-1 text-sm text-gray-600">Task: <strong id="interrupted-log-task"></strong></p>
+            <p class="mb-1 text-sm text-gray-600">Current focus session: <strong id="interrupted-log-current-duration"></strong> min.</p>
+            <p class="mb-4 text-sm text-gray-600">Total time logged today: <strong id="interrupted-log-total-duration"></strong> min.</p>
+            <p class="mb-4 text-sm text-gray-800">Log the current focus session?</p>
+            <div class="flex justify-end space-x-3">
+                <button id="interrupted-log-discard" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md">Discard Session</button>
+                <button id="interrupted-log-log" class="bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded-md shadow-sm">Log Session</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirmation-modal" class="modal">
+        <div class="modal-content relative">
+            <span id="close-confirmation-button" class="modal-close-button">&times;</span>
+            <h2 class="text-lg font-semibold mb-3 text-gray-800" id="confirmation-title">Confirm Action</h2>
+            <p class="mb-4 text-sm text-gray-600" id="confirmation-message">Are you sure?</p>
+            <div class="flex justify-end space-x-3">
+                <button id="confirmation-cancel-button" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md">Cancel</button>
+                <button id="confirmation-confirm-button" class="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-md shadow-sm">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="notification-area" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
+
+    <script>
+        // --- DOM Elements ---
+        const tabTimer = document.getElementById('tab-timer'); const tabLog = document.getElementById('tab-log'); const viewTimer = document.getElementById('view-timer'); const viewLog = document.getElementById('view-log');
+        const timerDisplay = document.getElementById('timer-display'); const timerModeDisplay = document.getElementById('timer-mode'); const focusedTaskDisplay = document.getElementById('focused-task-display'); const startPauseButton = document.getElementById('start-pause-button'); const startPauseIconWrapper = document.getElementById('start-pause-icon-wrapper'); const startPauseButtonText = startPauseButton.querySelector('.button-text'); const resetButton = document.getElementById('reset-button'); const skipButton = document.getElementById('skip-button'); const settingsButton = document.getElementById('settings-button');
+        const progressRing = document.getElementById('progress-ring');
+        const newTaskInput = document.getElementById('new-task-input'); const newTaskProjectSelect = document.getElementById('new-task-project'); const addTaskButton = document.getElementById('add-task-button'); const taskListContainer = document.getElementById('task-list-container'); const taskListEmptyMsg = document.getElementById('task-list-empty');
+        const newProjectInput = document.getElementById('new-project-input'); const newProjectColorInput = document.getElementById('new-project-color'); const addProjectButton = document.getElementById('add-project-button'); const projectListDiv = document.getElementById('project-list');
+        const logPrevDayButton = document.getElementById('log-prev-day'); const logNextDayButton = document.getElementById('log-next-day'); const logTodayButton = document.getElementById('log-today'); const logDateDisplay = document.getElementById('log-date-display');
+        const logJumpDateInput = document.getElementById('log-jump-date');
+        const logRecordList = document.getElementById('log-record-list'); const logEmptyMessage = document.getElementById('log-empty-message');
+        const toggleManualLogFormButton = document.getElementById('toggle-manual-log-form'); const manualLogForm = document.getElementById('manual-log-form'); const manualLogTaskInput = document.getElementById('manual-log-task'); const manualLogProjectSelect = document.getElementById('manual-log-project'); const manualLogDateInput = document.getElementById('manual-log-date'); const manualLogStartInput = document.getElementById('manual-log-start'); const manualLogEndInput = document.getElementById('manual-log-end'); const cancelManualLogButton = document.getElementById('cancel-manual-log'); const taskSuggestionsDatalist = document.getElementById('task-suggestions');
+        const timeSuggestionContainer = document.getElementById('time-suggestion-container'); // Container for time buttons
+        const timeSuggestionLabel = document.getElementById('time-suggestion-label'); // Label for time buttons
+        const settingsModal = document.getElementById('settings-modal'); const closeModalButton = document.getElementById('close-modal-button'); const saveSettingsButton = document.getElementById('save-settings-button'); const workDurationInput = document.getElementById('work-duration'); const shortBreakDurationInput = document.getElementById('short-break-duration'); const longBreakDurationInput = document.getElementById('long-break-duration'); const longBreakIntervalInput = document.getElementById('long-break-interval'); const soundEnabledInput = document.getElementById('sound-enabled');
+        const interruptedLogConfirmationModal = document.getElementById('interrupted-log-confirmation-modal'); const closeInterruptedLogConfirmationButton = document.getElementById('close-interrupted-log-confirmation-button'); const interruptedLogTask = document.getElementById('interrupted-log-task'); const interruptedLogCurrentDuration = document.getElementById('interrupted-log-current-duration'); const interruptedLogTotalDuration = document.getElementById('interrupted-log-total-duration'); const interruptedLogDiscardButton = document.getElementById('interrupted-log-discard'); const interruptedLogLogButton = document.getElementById('interrupted-log-log');
+        const confirmationModal = document.getElementById('confirmation-modal'); const closeConfirmationButton = document.getElementById('close-confirmation-button'); const confirmationTitle = document.getElementById('confirmation-title'); const confirmationMessage = document.getElementById('confirmation-message'); const confirmationCancelButton = document.getElementById('confirmation-cancel-button'); const confirmationConfirmButton = document.getElementById('confirmation-confirm-button');
+        const notificationArea = document.getElementById('notification-area');
+        const pieChartCanvas = document.getElementById('project-pie-chart-canvas'); const verbalSummaryDiv = document.getElementById('verbal-summary');
+
+        // --- Constants ---
+        const SVG_STRINGS = { play: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="icon"><polygon points="6 3 20 12 6 21 6 3"/></svg>`, pause: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="icon"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`, pencil: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" class="icon icon-sm"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/><path d="m15 5 4 4"/></svg>`, trash2: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" class="icon icon-sm"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>`, crosshair: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" class="icon icon-sm"><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>` };
+        const PROGRESS_RING_RADIUS = 42; const PROGRESS_RING_CIRCUMFERENCE = 2 * Math.PI * PROGRESS_RING_RADIUS;
+        const MINUTES_IN_DAY = 24 * 60; const DEFAULT_PROJECT_ID = 'inbox';
+        const PROJECT_COLORS = ['#6366f1', '#ec4899', '#22c55e', '#f97316', '#0ea5e9', '#eab308', '#8b5cf6'];
+        const DEFAULT_PROJECT_COLOR = '#6b7280';
+
+        // --- State ---
+        let timerInterval = null; let currentMode = 'work'; let timeRemaining = 25 * 60; let isRunning = false; let workSessionsCompleted = 0; let activeTaskIndex = null; let activeTaskFocusStartTime = null;
+        let tasks = []; let projects = []; let settings = { workDuration: 25, shortBreakDuration: 5, longBreakDuration: 15, longBreakInterval: 4, soundEnabled: true };
+        let logEntries = {}; let displayedLogDate = new Date(); let totalDurationSeconds = settings.workDuration * 60;
+        let draggedTaskId = null; let nextColorIndex = 0;
+        let pendingInterruptedLogData = null;
+        let pieChartInstance = null;
+        let confirmActionCallback = null;
+
+        // --- Audio ---
+        let synth = null; function initializeAudio(){if(synth||(Tone.context&&Tone.context.state==='running')){if(!synth)synth=new Tone.Synth().toDestination();return}Tone.start().then(()=>{console.log("Audio started.");synth=new Tone.Synth().toDestination()}).catch(e=>{console.error("Audio failed:",e);settings.soundEnabled=false;soundEnabledInput.checked=false;showNotification("Audio failed. Sound disabled.","error")})} function playNotificationSound(){if(!settings.soundEnabled)return;if(!synth){initializeAudio();if(!synth){console.warn("Synth not ready.");showNotification("Timer done (audio fail)","warning");return}}try{const n=Tone.now();synth.triggerAttackRelease("C5","8n",n);synth.triggerAttackRelease("G5","8n",n+0.2)}catch(e){console.error("Sound error:",e);showNotification("Timer done (sound error)","error")}}
+
+        // --- Utility Functions ---
+        function formatTime(seconds){const m=Math.floor(seconds/60);const s=seconds%60;return `${m}:${s<10?'0':''}${s}`}
+        function updateTimerDisplayAndProgress(){timerDisplay.textContent=formatTime(timeRemaining);const progress=Math.max(0,(totalDurationSeconds-timeRemaining)/totalDurationSeconds);const offset=PROGRESS_RING_CIRCUMFERENCE*(1-progress);progressRing.style.strokeDashoffset=offset;document.title=`${formatTime(timeRemaining)} - ${timerModeDisplay.textContent} - FocusFlow`}
+        function showNotification(msg, type = 'info', dur = 3000) { const icons = { info: 'ℹ️', success: '✅', warning: '⚠️', error: '❌' }; const n = document.createElement('div'); n.innerHTML = `${icons[type] || ''} <span class="ml-2">${msg}</span>`; let c = 'bg-blue-500'; if (type === 'success') c = 'bg-green-500'; if (type === 'error') c = 'bg-red-500'; if (type === 'warning') c = 'bg-yellow-500'; n.className = `p-3 rounded-lg shadow-md text-white text-sm ${c} animate-fade-in flex items-center`; notificationArea.appendChild(n); setTimeout(() => { n.classList.remove('animate-fade-in'); n.classList.add('animate-fade-out'); setTimeout(() => n.remove(), 500) }, dur); }
+        function updateFocusedTaskDisplay(){const activeTask=tasks.find(t=>t.id===activeTaskIndex);if(activeTask){const t=activeTask.text;const tr=t.length>30?t.substring(0,27)+'...':t;focusedTaskDisplay.textContent=`| Focusing on: ${tr}`;focusedTaskDisplay.title=`Focusing on: ${t}`}else{focusedTaskDisplay.textContent='';focusedTaskDisplay.title=''}} function getDateString(date){return date.toISOString().split('T')[0]} function formatTimeForDisplay(timestamp){return new Date(timestamp).toLocaleTimeString([],{hour:'numeric',minute:'2-digit',hour12:true})} function formatTimeHHMM(hours,minutes){return `${hours.toString().padStart(2,'0')}:${minutes.toString().padStart(2,'0')}`} function formatDateForDisplay(date){return date.toLocaleDateString([],{weekday:'short',year:'numeric',month:'short',day:'numeric'})} function generateUniqueId(prefix='id'){return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2,9)}`}
+        function getProjectColor(projectId){if(projectId===DEFAULT_PROJECT_ID)return DEFAULT_PROJECT_COLOR;const project=projects.find(p=>p.id===projectId);return project?.color||DEFAULT_PROJECT_COLOR}
+        function darkenColor(hex,percent=20){try{hex=hex.replace('#','');let r=parseInt(hex.substring(0,2),16);let g=parseInt(hex.substring(2,4),16);let b=parseInt(hex.substring(4,6),16);r=Math.max(0,r-Math.round(r*(percent/100)));g=Math.max(0,g-Math.round(g*(percent/100)));b=Math.max(0,b-Math.round(b*(percent/100)));return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`}catch(e){return '#555'}}
+        function isColorLight(hex){try{hex=hex.replace('#','');const r=parseInt(hex.substring(0,2),16);const g=parseInt(hex.substring(2,4),16);const b=parseInt(hex.substring(4,6),16);const luminance=(0.299*r+0.587*g+0.114*b)/255;return luminance>0.6}catch(e){return true;}}
+
+        // --- Timer Logic ---
+        function startTimer(){if(isRunning)return;initializeAudio();isRunning=true;switch(currentMode){case 'work':totalDurationSeconds=settings.workDuration*60;break;case 'shortBreak':totalDurationSeconds=settings.shortBreakDuration*60;break;case 'longBreak':totalDurationSeconds=settings.longBreakDuration*60;break;default:totalDurationSeconds=settings.workDuration*60}timeRemaining=Math.min(timeRemaining,totalDurationSeconds);startPauseIconWrapper.innerHTML=SVG_STRINGS.pause;startPauseButtonText.textContent='Pause';startPauseButton.classList.replace('bg-indigo-600','bg-yellow-500');startPauseButton.classList.replace('hover:bg-indigo-700','hover:bg-yellow-600');clearInterval(timerInterval);updateTimerDisplayAndProgress();timerInterval=setInterval(()=>{timeRemaining--;updateTimerDisplayAndProgress();if(timeRemaining<=0){clearInterval(timerInterval);isRunning=false;playNotificationSound();switchMode()}},1000)} function pauseTimer(){if(!isRunning)return;isRunning=false;clearInterval(timerInterval);startPauseIconWrapper.innerHTML=SVG_STRINGS.play;startPauseButtonText.textContent='Resume';startPauseButton.classList.replace('bg-yellow-500','bg-indigo-600');startPauseButton.classList.replace('hover:bg-yellow-600','hover:bg-indigo-700')} function resetTimer(switchToWork=false){pauseTimer();if(switchToWork){currentMode='work';workSessionsCompleted=0}setTimerForMode(currentMode);showNotification("Timer reset.", "info");} function skipMode(){pauseTimer();switchMode(true)}
+        function switchMode(skipped=false){let notificationMessage="";let previousMode=currentMode;const activeTask=tasks.find(t=>t.id===activeTaskIndex);if(previousMode==='work'&&!skipped&&activeTask){activeTask.pomodorosCompleted=(activeTask.pomodorosCompleted||0)+1;saveTasks();renderTasks()}if(currentMode==='work'){if(!skipped)workSessionsCompleted++;currentMode=(workSessionsCompleted>0&&workSessionsCompleted%settings.longBreakInterval===0)?'longBreak':'shortBreak';notificationMessage=currentMode==='longBreak'?"Work done! Time for a long break 😎":"Work done! Take a short break ✨"}else{currentMode='work';notificationMessage="Break's over! Let's get back to it! 💪"}setTimerForMode(currentMode);showNotification(notificationMessage,'info');startPauseIconWrapper.innerHTML=SVG_STRINGS.play;startPauseButtonText.textContent='Start';startPauseButton.classList.replace('bg-yellow-500','bg-indigo-600');startPauseButton.classList.replace('hover:bg-yellow-600','hover:bg-indigo-700')}
+        function setTimerForMode(mode){currentMode=mode;let d=0,t='',colorClass='text-indigo-600';switch(mode){case 'work':d=settings.workDuration;t='Work';colorClass='text-indigo-600';break;case 'shortBreak':d=settings.shortBreakDuration;t='Short Break';colorClass='text-green-600';break;case 'longBreak':d=settings.longBreakDuration;t='Long Break';colorClass='text-purple-600';break}timeRemaining=d*60;totalDurationSeconds=timeRemaining;timerModeDisplay.textContent=t;progressRing.classList.remove('text-indigo-600','text-green-600','text-purple-600');progressRing.classList.add(colorClass);progressRing.style.strokeDashoffset=PROGRESS_RING_CIRCUMFERENCE;updateTimerDisplayAndProgress();updateFocusedTaskDisplay()}
+
+        // --- Project Logic ---
+        function addProject() { const name = newProjectInput.value.trim(); const color = newProjectColorInput.value; if (name && !projects.some(p => p.name.toLowerCase() === name.toLowerCase())) { const newProject = { id: generateUniqueId('proj'), name: name, color: color }; projects.push(newProject); saveProjects(); renderProjectsUI(); newProjectInput.value = ''; showNotification(`Project "${name}" added! 🎉`, 'success'); } else if (!name) { showNotification("Project name can't be empty!", "warning"); } else { showNotification(`Project "${name}" already exists.`, "warning"); } }
+        function deleteProject(projectId) {
+            if (projectId === DEFAULT_PROJECT_ID) { showNotification("Cannot delete the default Inbox project.", "error"); return; }
+            const projectIndex = projects.findIndex(p => p.id === projectId);
+            if (projectIndex === -1) return;
+            const projectName = projects[projectIndex].name;
+
+            showConfirmationModal( // Use confirmation modal
+                `DELETE Project "${projectName}"?\n\nThis will also delete ALL associated tasks permanently!`,
+                () => { // This code runs if user confirms
+                    projects.splice(projectIndex, 1);
+                    const tasksToDelete = tasks.filter(task => task.projectId === projectId);
+                    tasks = tasks.filter(task => task.projectId !== projectId);
+                    if (tasksToDelete.some(task => task.id === activeTaskIndex)) {
+                        activeTaskIndex = null; activeTaskFocusStartTime = null;
+                        updateFocusedTaskDisplay();
+                    }
+                    saveProjects(); saveTasks(); renderProjectsUI();
+                    showNotification(`Project "${projectName}" and its tasks deleted.`, 'warning');
+                }
+            );
+        }
+        function populateProjectDropdown(selectElement) { selectElement.innerHTML = ''; projects.forEach(project => { const option = document.createElement('option'); option.value = project.id; option.textContent = project.name; selectElement.appendChild(option); }); const defaultOption = selectElement.querySelector(`option[value="${DEFAULT_PROJECT_ID}"]`); if (defaultOption) { selectElement.value = DEFAULT_PROJECT_ID; } }
+        function renderProjectsUI() { populateProjectDropdown(newTaskProjectSelect); populateProjectDropdown(manualLogProjectSelect); projectListDiv.innerHTML = ''; if (projects.length > 1) { projects.forEach(project => { const item = document.createElement('div'); item.className = 'project-list-item'; item.innerHTML = `<span class="flex items-center"><span class="project-color-swatch" style="background-color: ${project.color || DEFAULT_PROJECT_COLOR};"></span><span>${project.name}</span></span>${project.id !== DEFAULT_PROJECT_ID ? `<button class="project-delete-btn" data-project-id="${project.id}" title="Delete Project">${SVG_STRINGS.trash2}</button>` : ''}`; if (project.id !== DEFAULT_PROJECT_ID) { item.querySelector('.project-delete-btn').addEventListener('click', (e) => { e.stopPropagation(); deleteProject(project.id); }); } projectListDiv.appendChild(item); }); } else { projectListDiv.innerHTML = '<p class="text-xs text-gray-500 italic">Add more projects here...</p>'; } populateTaskSuggestions(); renderTasks(); }
+
+
+        // --- Task Logic ---
+        function renderTasks(){taskListContainer.innerHTML='';if(projects.length===0){taskListContainer.appendChild(taskListEmptyMsg);taskListEmptyMsg.textContent='Create a project first.';taskListEmptyMsg.style.display='block';return}let tasksRendered=false;projects.forEach(project=>{const projectTasks=tasks.filter(task=>task.projectId===project.id);const groupContainer=document.createElement('div');groupContainer.className='project-group';groupContainer.dataset.projectId=project.id;const header=document.createElement('h3');header.className='project-header';header.textContent=project.name;groupContainer.appendChild(header);const tasksInGroupContainer=document.createElement('div');tasksInGroupContainer.className='space-y-2';if(projectTasks.length>0){tasksRendered=true;projectTasks.forEach(task=>{const taskElement=document.createElement('div');const isActive=task.id===activeTaskIndex;taskElement.className=`task-item flex items-center justify-between bg-white p-3 rounded-lg shadow-sm border border-gray-200 transition-all duration-200 ${task.completed?'opacity-60':'opacity-100'} ${isActive?'active-task':''}`;taskElement.dataset.taskId=task.id;taskElement.draggable=true;taskElement.addEventListener('dragstart',handleTaskDragStart);taskElement.addEventListener('dragend',handleTaskDragEnd);const leftSection=document.createElement('div');leftSection.className='flex items-center space-x-3 flex-grow mr-2 min-w-0';const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=task.completed;checkbox.className='h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer flex-shrink-0';checkbox.addEventListener('change',()=>toggleTaskComplete(task.id));const taskText=document.createElement('span');taskText.textContent=task.text;taskText.className=`task-text-span text-gray-800 flex-grow break-words ${task.completed?'completed':'cursor-pointer hover:text-blue-600'}`;if(!task.completed){taskText.addEventListener('click',()=>editTask(task.id,taskElement));taskText.title="Click to edit"}const pomodoroDisplay=document.createElement('span');pomodoroDisplay.className='task-pomodoros flex-shrink-0';pomodoroDisplay.textContent='🍅'.repeat(task.pomodorosCompleted||0);pomodoroDisplay.title=`${task.pomodorosCompleted||0} Pomodoros`;leftSection.appendChild(checkbox);leftSection.appendChild(taskText);leftSection.appendChild(pomodoroDisplay);const rightSection=document.createElement('div');rightSection.className='flex-shrink-0 flex items-center space-x-1';if(!task.completed&&!isActive){const focusButton=document.createElement('button');focusButton.innerHTML=SVG_STRINGS.crosshair;focusButton.className='text-green-600 hover:text-green-800 p-1 rounded focus:outline-none focus:ring-2 focus:ring-green-300';focusButton.title="Focus";focusButton.addEventListener('click',()=>setActiveTask(task.id));rightSection.appendChild(focusButton)}else if(!task.completed&&isActive){const activeIndicator=document.createElement('span');activeIndicator.className='w-7 h-7 flex items-center justify-center text-indigo-600';activeIndicator.innerHTML=SVG_STRINGS.play;activeIndicator.title="Focused";rightSection.appendChild(activeIndicator)}else{const p=document.createElement('span');p.className='w-7 h-7';rightSection.appendChild(p)}if(!task.completed){const editButton=document.createElement('button');editButton.innerHTML=SVG_STRINGS.pencil;editButton.className='text-blue-500 hover:text-blue-700 p-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-300';editButton.title="Edit";editButton.addEventListener('click',()=>editTask(task.id,taskElement));rightSection.appendChild(editButton)}else{const p=document.createElement('span');p.className='w-7 h-7';rightSection.appendChild(p)}const deleteButton=document.createElement('button');deleteButton.innerHTML=SVG_STRINGS.trash2;deleteButton.className='text-red-500 hover:text-red-700 p-1 rounded focus:outline-none focus:ring-2 focus:ring-red-300';deleteButton.title="Delete";deleteButton.addEventListener('click',()=>handleTaskDeleteClick(task.id));rightSection.appendChild(deleteButton);taskElement.appendChild(leftSection);taskElement.appendChild(rightSection);tasksInGroupContainer.appendChild(taskElement)})}else{const noTasksMsg=document.createElement('p');noTasksMsg.className='text-sm text-gray-500 italic px-3';noTasksMsg.textContent='No tasks in this project yet!';tasksInGroupContainer.appendChild(noTasksMsg)}groupContainer.appendChild(tasksInGroupContainer);groupContainer.addEventListener('dragover',handleTaskDragOver);groupContainer.addEventListener('dragenter',handleTaskDragEnter);groupContainer.addEventListener('dragleave',handleTaskDragLeave);groupContainer.addEventListener('drop',handleTaskDrop);taskListContainer.appendChild(groupContainer)});taskListEmptyMsg.style.display=tasksRendered?'none':'block';if(!tasksRendered){taskListEmptyMsg.textContent='No tasks found. Add a task below.';taskListContainer.appendChild(taskListEmptyMsg)}updateFocusedTaskDisplay()}
+        function setActiveTask(taskId){const task=tasks.find(t=>t.id===taskId);if(task&&!task.completed){if(activeTaskIndex!==null&&activeTaskIndex!==taskId){activeTaskFocusStartTime=null}activeTaskIndex=taskId;activeTaskFocusStartTime=Date.now();showNotification(`Focusing on: ${task.text.substring(0,30)}...`,'info');renderTasks()}else{console.warn("Invalid task ID or task completed:",taskId)}}
+        function editTask(taskId,taskElement){const taskIndex=tasks.findIndex(t=>t.id===taskId);if(taskIndex===-1)return;const task=tasks[taskIndex];if(task.completed||taskElement.querySelector('input[type="text"]'))return;const l=taskElement.querySelector('.flex.items-center.space-x-3');const s=l.querySelector('.task-text-span');if(!s)return;const o=task.text;const i=document.createElement('input');i.type='text';i.value=o;i.className='flex-grow border-gray-300 rounded-md shadow-sm p-1 text-sm mx-1';const save=()=>{const n=i.value.trim();if(n&&n!==o){tasks[taskIndex].text=n;saveTasks();s.textContent=n;showNotification('Task updated!','success')}if(l.contains(i))l.replaceChild(s,i);s.addEventListener('click',()=>editTask(taskId,taskElement));s.title="Click to edit"};s.removeEventListener('click',()=>editTask(taskId,taskElement));s.title="";l.replaceChild(i,s);i.focus();i.select();i.addEventListener('keydown',(e)=>{if(e.key==='Enter'){e.preventDefault();save()}else if(e.key==='Escape'){if(l.contains(i))l.replaceChild(s,i);s.addEventListener('click',()=>editTask(taskId,taskElement));s.title="Click to edit"}});i.addEventListener('blur',save)}
+        function addTask(){const text=newTaskInput.value.trim();const projectId=newTaskProjectSelect.value||DEFAULT_PROJECT_ID;if(text){const newTask={id:generateUniqueId('task'),text:text,completed:false,pomodorosCompleted:0,projectId:projectId};tasks.push(newTask);newTaskInput.value='';saveTasks();renderTasks();showNotification('Task added!','success')}else{showNotification('Task cannot be empty!','warning')}}
+
+        function toggleTaskComplete(taskId){
+            const taskIndex=tasks.findIndex(t=>t.id===taskId);if(taskIndex===-1)return;
+            const task=tasks[taskIndex];
+            task.completed=!task.completed; // Toggle status first
+            const isNowCompleted=task.completed;
+
+            let shouldResetTimer = false; // Flag to reset timer after potential modal
+
+            // --- Automatic Logging Logic ---
+            if (isNowCompleted && taskId === activeTaskIndex && activeTaskFocusStartTime) {
+                const endTime = Date.now();
+                const startTime = activeTaskFocusStartTime;
+                const currentFocusDurationMinutes = Math.round((endTime - startTime) / (1000 * 60));
+
+                if (isRunning) { // Timer was running - ask for confirmation
+                    const todayStr = getDateString(new Date());
+                    const todaysLogs = logEntries[todayStr] || [];
+                    const previousTime = todaysLogs
+                        .filter(entry => entry.taskText === task.text) // Simple match by text for summary
+                        .reduce((sum, entry) => sum + entry.duration, 0);
+                    const totalTimeToday = previousTime + currentFocusDurationMinutes;
+
+                    const logSummaryData = {
+                        taskText: task.text,
+                        currentDuration: currentFocusDurationMinutes,
+                        totalDurationToday: totalTimeToday,
+                        logData: { // Data needed if user confirms logging
+                            timestamp: endTime,
+                            taskText: task.text,
+                            duration: currentFocusDurationMinutes,
+                            projectId: task.projectId
+                        }
+                    };
+                    if (currentFocusDurationMinutes > 0) { confirmInterruptedFocusLog(logSummaryData); }
+                    shouldResetTimer = true;
+
+                } else if (currentFocusDurationMinutes > 0) { // Timer wasn't running, log directly
+                    const logData = { timestamp: endTime, taskText: task.text, duration: currentFocusDurationMinutes, projectId: task.projectId };
+                    addLogEntry(logData);
+                    showNotification(`Logged ${currentFocusDurationMinutes} min focus on "${task.text.substring(0, 20)}..."! Awesome!`, 'success');
+                }
+                activeTaskFocusStartTime = null;
+            }
+            // --- End Automatic Logging ---
+
+            if(isNowCompleted && task.id === activeTaskIndex){ activeTaskIndex = null; activeTaskFocusStartTime = null; }
+
+            saveTasks(); renderTasks();
+
+            if (shouldResetTimer) { resetTimer(true); }
+
+            const notificationText=isNowCompleted?'Task Complete! Woohoo! 🎉':'Task marked incomplete.';
+            showNotification(notificationText,'info');
+            if(isNowCompleted&&typeof confetti==='function'){confetti({particleCount:150,spread:90,origin:{y:0.6},zIndex: 200})}
+        }
+
+        function handleTaskDeleteClick(taskId) {
+             const taskIndex = tasks.findIndex(t => t.id === taskId);
+             if (taskIndex === -1) return;
+             const task = tasks[taskIndex];
+             if (task.completed) { deleteTaskAction(taskId); return; } // No confirm for completed
+             showConfirmationModal(`Delete task "${task.text}"?`, () => deleteTaskAction(taskId));
+        }
+
+        function deleteTaskAction(taskId) {
+            const taskIndex = tasks.findIndex(t => t.id === taskId); if (taskIndex === -1) return;
+            const taskText = tasks[taskIndex].text; tasks.splice(taskIndex, 1);
+            if (taskId === activeTaskIndex) { activeTaskIndex = null; activeTaskFocusStartTime = null; }
+            saveTasks(); renderTasks(); showNotification(`Task "${taskText.substring(0, 20)}..." deleted!`, 'warning');
+        }
+
+
+        // --- Task Drag and Drop Handlers ---
+        function handleTaskDragStart(event){draggedTaskId=event.target.dataset.taskId;event.dataTransfer.setData('text/plain',draggedTaskId);event.dataTransfer.effectAllowed='move';setTimeout(()=>event.target.classList.add('opacity-50'),0)} function handleTaskDragEnd(event){event.target.classList.remove('opacity-50');draggedTaskId=null;document.querySelectorAll('.drop-zone-active').forEach(el=>el.classList.remove('drop-zone-active'))} function handleTaskDragOver(event){event.preventDefault();event.dataTransfer.dropEffect='move'} function handleTaskDragEnter(event){const dropZone=event.target.closest('.project-group');if(dropZone&&dropZone.dataset.projectId){dropZone.classList.add('drop-zone-active')}} function handleTaskDragLeave(event){const dropZone=event.target.closest('.project-group');if(dropZone&&dropZone.dataset.projectId){if(!dropZone.contains(event.relatedTarget)){dropZone.classList.remove('drop-zone-active')}}else if(!event.target.closest('.project-group')&&event.target!==dropZone){document.querySelectorAll('.drop-zone-active').forEach(el=>el.classList.remove('drop-zone-active'))}} function handleTaskDrop(event){event.preventDefault();const dropZone=event.target.closest('.project-group');if(dropZone&&draggedTaskId){const targetProjectId=dropZone.dataset.projectId;const taskIndex=tasks.findIndex(t=>t.id===draggedTaskId);if(taskIndex!==-1&&tasks[taskIndex].projectId!==targetProjectId){tasks[taskIndex].projectId=targetProjectId;saveTasks();renderTasks();showNotification(`Task moved to "${projects.find(p=>p.id===targetProjectId)?.name||''}"!`,'success')}dropZone.classList.remove('drop-zone-active')}draggedTaskId=null}
+
+        // --- Logging Logic ---
+        const LS_LOG_KEY = 'pomodoroLogs_v3'; // Incremented Log Key for startTime
+        function loadLogsV3(){ // Renamed and updated
+            try {
+                const s = localStorage.getItem(LS_LOG_KEY);
+                logEntries = s ? JSON.parse(s) : {};
+                Object.keys(logEntries).forEach(dateStr => {
+                    logEntries[dateStr].forEach(entry => {
+                        if (entry.startTime === undefined) { // Add startTime if missing
+                            entry.startTime = entry.timestamp - (entry.duration * 60 * 1000);
+                        }
+                    });
+                    logEntries[dateStr].sort((a, b) => a.startTime - b.startTime); // Sort by startTime
+                });
+            } catch (e) { console.error("Failed load logs:", e); logEntries = {}; }
+        }
+        function saveLogs(){try{localStorage.setItem(LS_LOG_KEY,JSON.stringify(logEntries))}catch(e){console.error("Failed save logs:",e);showNotification("Error saving logs.","error")}}
+        function addLogEntry(entry){
+            if (!entry.projectId) { const task = tasks.find(t => t.text === entry.taskText); entry.projectId = task ? task.projectId : DEFAULT_PROJECT_ID; }
+            entry.startTime = entry.timestamp - (entry.duration * 60 * 1000); // Ensure startTime is present
+            const dateStr=getDateString(new Date(entry.timestamp));
+            if(!logEntries[dateStr]){logEntries[dateStr]=[]}
+            logEntries[dateStr].push(entry);
+            logEntries[dateStr].sort((a,b) => a.startTime - b.startTime); // Sort by start time
+            saveLogs();
+
+            if(getDateString(displayedLogDate)===dateStr && viewLog.style.display !== 'none'){
+                const newEntryElement = createLogRecordElement(entry, dateStr);
+                if (newEntryElement) {
+                    // Insert into correct sorted position or just re-render
+                    renderLogRecords(displayedLogDate); // Re-render for simplicity after add
+                    const addedElement = logRecordList.querySelector(`[data-timestamp="${entry.timestamp}"]`);
+                    if (addedElement) addedElement.classList.add('animate-log-entry');
+                    renderLogSummary(displayedLogDate);
+                } else { renderLogRecords(displayedLogDate); }
+            }
+        }
+        function handleLogDeleteClick(dateString, timestamp, taskText) {
+             showConfirmationModal( // Use confirmation modal
+                `Delete log entry "${taskText}"?`,
+                () => { // This code runs if user confirms
+                    if(!logEntries[dateString]) return;
+                    const initialLength = logEntries[dateString].length;
+                    logEntries[dateString] = logEntries[dateString].filter(entry => entry.timestamp !== timestamp);
+                    if (logEntries[dateString].length < initialLength) {
+                        saveLogs();
+                        renderLogRecords(displayedLogDate);
+                        renderLogSummary(displayedLogDate);
+                        showNotification("Log entry deleted.", "warning");
+                    }
+                }
+            );
+        }
+
+        // --- Log Record Rendering ---
+        function createLogRecordElement(entry, dateStr) { /* ... (no changes needed here, already uses createLogRecordElement) ... */ const item=document.createElement('div');item.className='log-record-item';item.dataset.timestamp=entry.timestamp;const endTime=new Date(entry.timestamp);const startTime=new Date(entry.timestamp-(entry.duration*60*1000));const projectColor=getProjectColor(entry.projectId);const projectName=projects.find(p=>p.id===entry.projectId)?.name||'Inbox';const textColorClass=isColorLight(projectColor)?'text-gray-700':'text-white';item.innerHTML=`<div class="log-record-time">${formatTimeForDisplay(startTime)}<br> - ${formatTimeForDisplay(endTime)}</div><div class="log-record-line-and-details"><div class="log-record-details"><div class="log-record-task">${entry.taskText}</div><div class="log-record-meta">(${entry.duration} min)<span class="log-record-project ${textColorClass}" style="background-color: ${projectColor}; border: 1px solid ${darkenColor(projectColor, 15)};">${projectName}</span></div></div><button class="log-record-delete" title="Delete Log Entry">${SVG_STRINGS.trash2}</button></div>`;item.querySelector('.log-record-delete').onclick=()=>{handleLogDeleteClick(dateStr,entry.timestamp,entry.taskText)};return item; }
+
+        function renderLogRecords(date) {
+            const dateStr = getDateString(date);
+            logDateDisplay.textContent = formatDateForDisplay(date);
+            const entries = (logEntries[dateStr] || []).sort((a,b) => (a.startTime || (a.timestamp - a.duration * 60000)) - (b.startTime || (b.timestamp - b.duration * 60000))); // Ensure sorted by start time
+            logRecordList.innerHTML = '';
+            if (entries.length > 0) {
+                logEmptyMessage.style.display = 'none';
+                entries.forEach(entry => {
+                    const item = createLogRecordElement(entry, dateStr);
+                    if (item) logRecordList.appendChild(item);
+                });
+            } else { logEmptyMessage.style.display = 'block'; }
+        }
+
+        // --- Log Summary Rendering ---
+        function renderLogSummary(date) { /* ... (no changes needed here) ... */ const dateStr=getDateString(date);const entries=logEntries[dateStr]||[];verbalSummaryDiv.innerHTML='';if(pieChartInstance){pieChartInstance.destroy();pieChartInstance=null}if(entries.length===0){verbalSummaryDiv.innerHTML='<p class="text-gray-500 italic">Nothing logged yet for this day.</p>';if(pieChartCanvas)pieChartCanvas.style.display='none';return}if(pieChartCanvas)pieChartCanvas.style.display='block';const timeByProject={};entries.forEach(entry=>{const projectId=entry.projectId||DEFAULT_PROJECT_ID;timeByProject[projectId]=(timeByProject[projectId]||0)+entry.duration});const chartLabels=[];const chartData=[];const chartColors=[];projects.forEach(project=>{if(timeByProject[project.id]>0){chartLabels.push(project.name);chartData.push(timeByProject[project.id]);chartColors.push(project.color||DEFAULT_PROJECT_COLOR)}});if(timeByProject[DEFAULT_PROJECT_ID]>0&&!projects.some(p=>p.id===DEFAULT_PROJECT_ID)){chartLabels.push("Inbox");chartData.push(timeByProject[DEFAULT_PROJECT_ID]);chartColors.push(DEFAULT_PROJECT_COLOR)}Object.keys(timeByProject).forEach(projId=>{if(!projects.some(p=>p.id===projId)&&projId!==DEFAULT_PROJECT_ID){chartLabels.push("Other/Deleted");chartData.push(timeByProject[projId]);chartColors.push("#cccccc")}});if(chartData.length>0&&pieChartCanvas){const ctx=pieChartCanvas.getContext('2d');pieChartInstance=new Chart(ctx,{type:'pie',data:{labels:chartLabels,datasets:[{label:'Time Spent (min)',data:chartData,backgroundColor:chartColors,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:10}}},tooltip:{callbacks:{label:function(context){let label=context.label||'';if(label){label+=': '}if(context.parsed!==null){label+=context.parsed+' min'}return label}}}}}})}else if(pieChartCanvas){pieChartCanvas.style.display='none'}const entriesByProject={};entries.forEach(entry=>{const projectId=entry.projectId||DEFAULT_PROJECT_ID;if(!entriesByProject[projectId])entriesByProject[projectId]=new Set();entriesByProject[projectId].add(entry.taskText)});let summaryHtml='';projects.forEach(project=>{if(timeByProject[project.id]>0){summaryHtml+=`<div class="mb-2"><h5 class="text-gray-700"><span class="project-color-swatch inline-block" style="background-color: ${project.color||DEFAULT_PROJECT_COLOR};"></span>${project.name} (${timeByProject[project.id]} min)</h5><ul class="list-disc pl-5 text-gray-600">${[...entriesByProject[project.id]].map(taskText=>`<li>${taskText}</li>`).join('')}</ul></div>`}});Object.keys(entriesByProject).forEach(projId=>{if(!projects.some(p=>p.id===projId)){const projName=projId===DEFAULT_PROJECT_ID?"Inbox":"Other/Deleted";const projColor=projId===DEFAULT_PROJECT_ID?DEFAULT_PROJECT_COLOR:"#cccccc";const totalTime=timeByProject[projId]||0;if(totalTime>0){summaryHtml+=`<div class="mb-2"><h5 class="text-gray-700"><span class="project-color-swatch inline-block" style="background-color: ${projColor};"></span>${projName} (${totalTime} min)</h5><ul class="list-disc pl-5 text-gray-600">${[...entriesByProject[projId]].map(taskText=>`<li>${taskText}</li>`).join('')}</ul></div>`}}});if(summaryHtml){verbalSummaryDiv.innerHTML=summaryHtml}else{verbalSummaryDiv.innerHTML='<p class="text-gray-500 italic">Nothing logged yet for this day.</p>'} }
+
+
+        function showLogDate(date){
+            displayedLogDate=date;
+            logJumpDateInput.value = getDateString(date); // Update jump input
+            renderLogRecords(displayedLogDate);
+            renderLogSummary(displayedLogDate);
+            const today=new Date();today.setHours(0,0,0,0);
+            logNextDayButton.disabled=displayedLogDate>=today;
+        }
+
+        // --- Manual Log Form Logic ---
+        function toggleManualLogForm(show=true,prefill={}){if(show){populateProjectDropdown(manualLogProjectSelect);manualLogDateInput.value=prefill.date||getDateString(displayedLogDate);manualLogTaskInput.value=prefill.taskText||'';manualLogStartInput.value=prefill.startTime||'';manualLogEndInput.value=prefill.endTime||'';manualLogProjectSelect.value = prefill.projectId || DEFAULT_PROJECT_ID; manualLogForm.style.display='block';toggleManualLogFormButton.textContent='Cancel';updateTimeSuggestionButtons(); manualLogTaskInput.focus()}else{manualLogForm.style.display='none';toggleManualLogFormButton.textContent='Add Manual Entry'}}
+        function handleManualLogSubmit(event){
+            event.preventDefault();
+            const taskText=manualLogTaskInput.value.trim();
+            const projectId = manualLogProjectSelect.value;
+            const dateStr=manualLogDateInput.value;
+            const startTimeStr=manualLogStartInput.value;
+            const endTimeStr=manualLogEndInput.value;
+
+            if(!taskText||!projectId||!dateStr||!startTimeStr||!endTimeStr){showNotification("Please fill all fields.","warning");return}
+            const startDateTime=new Date(`${dateStr}T${startTimeStr}`);const endDateTime=new Date(`${dateStr}T${endTimeStr}`);
+            if(isNaN(startDateTime.getTime())||isNaN(endDateTime.getTime())){showNotification("Invalid date/time.","error");return}
+            if(endDateTime<=startDateTime){showNotification("End time must be after start.","warning");return}
+            const durationMinutes=Math.round((endDateTime.getTime()-startDateTime.getTime())/(60*1000));
+            const endTimestamp=endDateTime.getTime();
+
+            addLogEntry({timestamp:endTimestamp,taskText:taskText,duration:durationMinutes, projectId: projectId});
+            showNotification("Manual log saved! 👍","success");toggleManualLogForm(false)
+        }
+        function populateTaskSuggestions(){taskSuggestionsDatalist.innerHTML='';const uniqueTasks=[...new Set(tasks.map(task=>task.text))];uniqueTasks.forEach(taskText=>{const option=document.createElement('option');option.value=taskText;taskSuggestionsDatalist.appendChild(option)})}
+
+        // Update time suggestion buttons based on whether start time is filled
+        function updateTimeSuggestionButtons() {
+            const isStartTimeFilled = manualLogStartInput.value !== '';
+            timeSuggestionLabel.textContent = isStartTimeFilled ? "Add Duration:" : "Quick Add:";
+            manualLogForm.querySelectorAll('.time-suggestion-btn').forEach(button => {
+                const duration = parseInt(button.dataset.duration);
+                let label = '';
+                if (duration >= 60) {
+                    label = `${duration / 60}h`;
+                } else {
+                    label = `${duration}m`;
+                }
+                button.textContent = isStartTimeFilled ? `+${label}` : `Last ${label}`;
+            });
+        }
+
+        // Handle time suggestion button clicks
+        function handleTimeSuggestionClick(durationMinutes) {
+            const dateStr = manualLogDateInput.value;
+            const startTimeStr = manualLogStartInput.value;
+
+            if (!startTimeStr) { // Quick Add behavior
+                const now = new Date();
+                const endTime = now;
+                const startTime = new Date(now.getTime() - durationMinutes * 60 * 1000);
+                manualLogStartInput.value = formatTimeHHMM(startTime.getHours(), startTime.getMinutes());
+                manualLogEndInput.value = formatTimeHHMM(endTime.getHours(), endTime.getMinutes());
+                manualLogDateInput.value = getDateString(now); // Ensure date is today
+            } else { // Fill End Time behavior
+                if (!dateStr) { showNotification("Please select a Date first!", "warning"); return; }
+                const startDateTime = new Date(`${dateStr}T${startTimeStr}`);
+                if (isNaN(startDateTime.getTime())) { showNotification("Invalid Start Time or Date.", "error"); return; }
+                const endTime = new Date(startDateTime.getTime() + durationMinutes * 60 * 1000);
+                manualLogEndInput.value = formatTimeHHMM(endTime.getHours(), endTime.getMinutes());
+                // Decide if date should change - for now, keep it same as start date
+                // if (getDateString(endTime) !== dateStr) { manualLogDateInput.value = getDateString(endTime); }
+            }
+        }
+
+
+        // --- Interrupted Log Confirmation Modal Logic ---
+        function confirmInterruptedFocusLog(summaryData) {
+            pendingInterruptedLogData = summaryData.logData; // Store data for current session
+            interruptedLogTask.textContent = summaryData.taskText;
+            interruptedLogCurrentDuration.textContent = summaryData.currentDuration;
+            interruptedLogTotalDuration.textContent = summaryData.totalDurationToday;
+            interruptedLogConfirmationModal.style.display = 'flex'; // Show modal
+        }
+        function closeInterruptedLogConfirmationModal() {
+            pendingInterruptedLogData = null; // Clear pending data
+            interruptedLogConfirmationModal.style.display = 'none';
+        }
+
+        // --- Generic Confirmation Modal Logic ---
+        function showConfirmationModal(message, onConfirm) {
+            confirmationMessage.textContent = message;
+            confirmActionCallback = onConfirm; // Store the action to perform on confirm
+            confirmationModal.style.display = 'flex';
+        }
+        function closeConfirmationModal() {
+            confirmActionCallback = null; // Clear the callback
+            confirmationModal.style.display = 'none';
+        }
+
+
+        // --- Local Storage (Tasks, Projects, Settings) ---
+        const LS_TASKS_KEY = 'pomodoroTasks_v6'; const LS_PROJECTS_KEY = 'pomodoroProjects_v6'; const LS_SETTINGS_KEY = 'pomodoroSettings_v6'; const LS_LOG_KEY_V3 = 'pomodoroLogs_v3'; // Use V3
+        function saveTasks(){try{localStorage.setItem(LS_TASKS_KEY,JSON.stringify(tasks))}catch(e){console.error("Save tasks failed:",e);showNotification("Error saving tasks.","error")}}
+        function loadTasks(){try{const s=localStorage.getItem(LS_TASKS_KEY);if(s){tasks=JSON.parse(s).map(t=>({...t,id:t.id||generateUniqueId('task'),projectId:t.projectId||DEFAULT_PROJECT_ID,pomodorosCompleted:t.pomodorosCompleted||0}))}else{tasks=[]}}catch(e){console.error("Load tasks failed:",e);tasks=[];showNotification("Error loading tasks.","error")}if(activeTaskIndex!==null&&!tasks.some(t=>t.id===activeTaskIndex&&!t.completed)){activeTaskIndex=null}renderTasks()}
+        function saveProjects(){try{localStorage.setItem(LS_PROJECTS_KEY,JSON.stringify(projects))}catch(e){console.error("Save projects failed:",e);showNotification("Error saving projects.","error")}}
+        function loadProjects(){try{const s=localStorage.getItem(LS_PROJECTS_KEY);projects=s?JSON.parse(s):[];nextColorIndex=projects.length}catch(e){console.error("Load projects failed:",e);projects=[]}if(projects.length===0||!projects.some(p=>p.id===DEFAULT_PROJECT_ID)){projects.unshift({id:DEFAULT_PROJECT_ID,name:'Inbox', color: DEFAULT_PROJECT_COLOR});saveProjects()}projects=projects.map((p,idx)=>({...p,color:p.color||PROJECT_COLORS[idx%PROJECT_COLORS.length]}));saveProjects();renderProjectsUI()}
+        function saveSettings(){try{settings.workDuration=Math.max(1,parseInt(workDurationInput.value)||25);settings.shortBreakDuration=Math.max(1,parseInt(shortBreakDurationInput.value)||5);settings.longBreakDuration=Math.max(1,parseInt(longBreakDurationInput.value)||15);settings.longBreakInterval=Math.max(1,parseInt(longBreakIntervalInput.value)||4);settings.soundEnabled=soundEnabledInput.checked;localStorage.setItem(LS_SETTINGS_KEY,JSON.stringify(settings));showNotification('Settings saved!','success');workDurationInput.value=settings.workDuration;shortBreakDurationInput.value=settings.shortBreakDuration;longBreakDurationInput.value=settings.longBreakDuration;longBreakIntervalInput.value=settings.longBreakInterval;if(!isRunning)resetTimer(currentMode==='work')}catch(e){console.error("Save settings failed:",e);showNotification("Error saving settings.","error")}} function loadSettings(){try{const s=localStorage.getItem(LS_SETTINGS_KEY);if(s)settings={...settings,...JSON.parse(s)}}catch(e){console.error("Load settings failed:",e);showNotification("Error loading settings.","error")}workDurationInput.value=settings.workDuration;shortBreakDurationInput.value=settings.shortBreakDuration;longBreakDurationInput.value=settings.longBreakDuration;longBreakIntervalInput.value=settings.longBreakInterval;soundEnabledInput.checked=settings.soundEnabled;setTimerForMode(currentMode)}
+        function loadLogsV3(){ // Renamed and updated
+            try {
+                const s = localStorage.getItem(LS_LOG_KEY_V3); // Use V3 key
+                logEntries = s ? JSON.parse(s) : {};
+                Object.keys(logEntries).forEach(dateStr => {
+                    logEntries[dateStr].forEach(entry => {
+                        if (entry.startTime === undefined) { // Add startTime if missing
+                            entry.startTime = entry.timestamp - (entry.duration * 60 * 1000);
+                        }
+                    });
+                    logEntries[dateStr].sort((a, b) => a.startTime - b.startTime); // Sort by startTime
+                });
+            } catch (e) { console.error("Failed load logs:", e); logEntries = {}; }
+        }
+
+        // --- Modal ---
+        function openModal(){workDurationInput.value=settings.workDuration;shortBreakDurationInput.value=settings.shortBreakDuration;longBreakDurationInput.value=settings.longBreakDuration;longBreakIntervalInput.value=settings.longBreakInterval;soundEnabledInput.checked=settings.soundEnabled;settingsModal.style.display='flex'} function closeModal(){settingsModal.style.display='none'}
+
+        // --- Tab Switching ---
+        function showView(viewId){const views=[viewTimer,viewLog];views.forEach(view=>{if(view.id===`view-${viewId}`){view.classList.remove('view-hidden');view.classList.add('view-visible','animate-fade-in');view.classList.remove('animate-fade-out')}else if(view.classList.contains('view-visible')){view.classList.add('animate-fade-out');view.classList.remove('animate-fade-in');setTimeout(()=>{view.classList.add('view-hidden');view.classList.remove('view-visible')},300)}});tabTimer.classList.toggle('active',viewId==='timer');tabLog.classList.toggle('active',viewId==='log');if(viewId==='log'){showLogDate(displayedLogDate);populateTaskSuggestions();populateProjectDropdown(manualLogProjectSelect);toggleManualLogForm(false);updateTimeSuggestionButtons();}} // Update buttons on view show
+
+        // --- Event Listeners ---
+        tabTimer.addEventListener('click',()=>showView('timer'));tabLog.addEventListener('click',()=>showView('log')); startPauseButton.addEventListener('click',()=>{isRunning?pauseTimer():startTimer()});resetButton.addEventListener('click',()=>resetTimer(true));skipButton.addEventListener('click',skipMode); addTaskButton.addEventListener('click',addTask);newTaskInput.addEventListener('keydown',(e)=>{if(e.key==='Enter')addTask()}); addProjectButton.addEventListener('click', addProject); newProjectInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addProject(); });
+        settingsButton.addEventListener('click',openModal);closeModalButton.addEventListener('click',closeModal);saveSettingsButton.addEventListener('click',()=>{saveSettings();closeModal()});window.addEventListener('click',(event)=>{if(event.target==settingsModal)closeModal()}); logPrevDayButton.addEventListener('click',()=>{const d=new Date(displayedLogDate);d.setDate(d.getDate()-1);showLogDate(d)}); logNextDayButton.addEventListener('click',()=>{if(logNextDayButton.disabled)return;const d=new Date(displayedLogDate);d.setDate(d.getDate()+1);showLogDate(d)}); logTodayButton.addEventListener('click',()=>{showLogDate(new Date())}); toggleManualLogFormButton.addEventListener('click',()=>{const isVisible=manualLogForm.style.display==='block';toggleManualLogForm(!isVisible)}); cancelManualLogButton.addEventListener('click',()=>toggleManualLogForm(false)); manualLogForm.addEventListener('submit',handleManualLogSubmit);
+        logJumpDateInput.addEventListener('change', (event) => { const dateValue = event.target.value; if (dateValue) { const [year, month, day] = dateValue.split('-').map(Number); const selectedDate = new Date(year, month - 1, day); if (!isNaN(selectedDate.getTime())) { showLogDate(selectedDate); } } });
+        // Time Suggestion Buttons Listener
+        manualLogForm.querySelectorAll('.time-suggestion-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const duration = parseInt(button.dataset.duration);
+                if (!isNaN(duration)) { handleTimeSuggestionClick(duration); } // Use updated handler
+            });
+        });
+        // Listener to update suggestion buttons when start time changes
+        manualLogStartInput.addEventListener('input', updateTimeSuggestionButtons);
+
+        // Interrupted Log Confirmation Modal Listeners
+        interruptedLogLogButton.addEventListener('click', () => { if (pendingInterruptedLogData) { addLogEntry(pendingInterruptedLogData); showNotification("Interrupted session logged.", "success"); } closeInterruptedLogConfirmationModal(); });
+        interruptedLogDiscardButton.addEventListener('click', closeInterruptedLogConfirmationModal);
+        closeInterruptedLogConfirmationButton.addEventListener('click', closeInterruptedLogConfirmationModal);
+        window.addEventListener('click', (event) => { if (event.target == interruptedLogConfirmationModal) { closeInterruptedLogConfirmationModal(); } });
+        // Generic Confirmation Modal Listeners
+        confirmationConfirmButton.addEventListener('click', () => { if (typeof confirmActionCallback === 'function') { confirmActionCallback(); } closeConfirmationModal(); });
+        confirmationCancelButton.addEventListener('click', closeConfirmationModal);
+        closeConfirmationButton.addEventListener('click', closeConfirmationModal);
+         window.addEventListener('click', (event) => { if (event.target == confirmationModal) { closeConfirmationModal(); } });
+
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded',()=>{progressRing.style.strokeDasharray=PROGRESS_RING_CIRCUMFERENCE;progressRing.style.strokeDashoffset=PROGRESS_RING_CIRCUMFERENCE;loadSettings();loadProjects();loadTasks();loadLogsV3();showLogDate(new Date());showView('timer');setTimeout(initializeAudio,100)}); // Use loadLogsV3
+
+    </script>
+
+</body>
+</html>
