@@ -1,0 +1,1104 @@
+/* Basic styles */
+html, body { height: 100%; overflow: hidden; }
+body {
+    font-family: 'Inter', sans-serif;
+    overscroll-behavior: none;
+    background-color: #f3f4f6; /* Light mode default */
+    color: #1f2937; /* Default text color for light mode */
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+main { overflow-y: auto; } /* Allow scrolling in main area if needed */
+
+/* --- Dark Mode Base --- */
+html.dark body { /* Target body when html has .dark */
+    background-color: #111827; /* Dark gray-900 */
+    color: #d1d5db; /* Gray-300 */
+}
+html.dark main { background-color: #1f2937; } /* Dark gray-800 */
+html.dark header { background-color: #1f2937; border-bottom-color: #374151; }
+html.dark h1 { color: #c7d2fe; } /* Lighter indigo */
+html.dark .border-b.border-gray-200 { border-color: #374151; } /* Darker border */
+html.dark .bg-white { background-color: #1f2937; } /* Tab bar bg */
+html.dark .bg-gray-50 { background-color: #111827; } /* Slightly darker bg for containers */
+html.dark .bg-gray-100 { background-color: #1f2937; } /* Background for date range section */
+html.dark .border-gray-200 { border-color: #374151; }
+html.dark .border-gray-300 { border-color: #4b5563; }
+html.dark .shadow-sm { box-shadow: 0 1px 2px 0 rgba(255, 255, 255, 0.05); }
+html.dark .shadow-inner { box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06); }
+html.dark .shadow { box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06); }
+html.dark .shadow-md { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); }
+html.dark .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1); }
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #a0aec0; border-radius: 10px; border: 2px solid #f1f1f1; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #718096; }
+html.dark .custom-scrollbar::-webkit-scrollbar-track { background: #2d3748; }
+html.dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #718096; border-color: #2d3748; }
+html.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #a0aec0; }
+
+/* Icons */
+.icon { display: inline-block; vertical-align: middle; width: 1.25rem; height: 1.25rem; stroke-width: 2; stroke: currentColor; fill: none; }
+.icon-sm { width: 1rem; height: 1rem; }
+.icon-xs { width: 0.75rem; height: 0.75rem; }
+button .icon { margin-bottom: 0.1em; } /* Align icons in buttons better */
+#start-pause-button .icon { fill: currentColor; stroke: none; } /* Fill play/pause */
+#skip-button .icon { fill: currentColor; stroke: none; } /* Fill skip */
+#mark-done-button .icon { stroke-width: 3; } /* Make checkmark thicker */
+.project-add-task-button .icon { width: 1rem; height: 1rem; stroke-width: 2.5; } /* Smaller plus icon */
+
+
+/* Buttons */
+button { transition: background-color 0.2s ease-in-out, transform 0.15s ease-in-out, box-shadow 0.2s ease, border-color 0.2s ease, color 0.2s ease; }
+button:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1); }
+button:not(:disabled):active { transform: scale(0.97); box-shadow: inset 0 2px 4px 0 rgba(0,0,0,0.06); }
+button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+html.dark button:not(:disabled):hover { box-shadow: 0 4px 6px -1px rgba(255,255,255,0.05), 0 2px 4px -2px rgba(255,255,255,0.05); }
+html.dark button:not(:disabled):active { box-shadow: inset 0 2px 4px 0 rgba(0,0,0,0.1); }
+
+/* Specific Button Colors (Dark Mode) */
+html.dark #add-task-button, html.dark #add-project-button,
+/* html.dark .project-add-task-button,  Removed specific dark bg */
+html.dark #start-pause-button[class*="bg-indigo"], /* Only when indigo */
+html.dark #save-settings-button,
+html.dark #save-edit-project-button, html.dark #start-with-task-button,
+html.dark #save-edit-log-button,
+html.dark #generate-summary-button /* Added */
+{ background-color: #4f46e5; color: white; }
+html.dark #add-task-button:hover, html.dark #add-project-button:hover,
+/* html.dark .project-add-task-button:hover, Removed specific dark bg hover */
+html.dark #start-pause-button[class*="bg-indigo"]:hover,
+html.dark #save-settings-button:hover,
+html.dark #save-edit-project-button:hover, html.dark #start-with-task-button:hover,
+html.dark #save-edit-log-button:hover,
+html.dark #generate-summary-button:hover /* Added */
+{ background-color: #4338ca; }
+
+html.dark #start-pause-button[class*="bg-yellow"] { background-color: #d97706; color: white; } /* Pause button */
+html.dark #start-pause-button[class*="bg-yellow"]:hover { background-color: #b45309; }
+
+html.dark #reset-button, html.dark #start-without-task-button { background-color: #4b5563; color: white; }
+html.dark #reset-button:hover, html.dark #start-without-task-button:hover { background-color: #374151; }
+
+html.dark #skip-button { background-color: #ca8a04; color: white; }
+html.dark #skip-button:hover { background-color: #a16207; }
+
+html.dark #settings-button, html.dark #toggle-elapsed-button,
+html.dark #cancel-manual-log, html.dark #confirmation-cancel-button,
+html.dark #cancel-edit-log-button, html.dark #cancel-edit-project-button,
+html.dark #interrupted-log-discard,
+html.dark #inactivity-cancel-manual-log /* Style for embedded cancel */
+{ background-color: #374151; color: #d1d5db; }
+html.dark #settings-button:hover, html.dark #toggle-elapsed-button:hover,
+html.dark #cancel-manual-log:hover, html.dark #confirmation-cancel-button:hover,
+html.dark #cancel-edit-log-button:hover, html.dark #cancel-edit-project-button:hover,
+html.dark #interrupted-log-discard:hover,
+html.dark #inactivity-cancel-manual-log:hover
+{ background-color: #4b5563; }
+
+html.dark #confirmation-confirm-button { background-color: #b91c1c; color: white; }
+html.dark #confirmation-confirm-button:hover { background-color: #991b1b; }
+
+html.dark #interrupted-log-log, html.dark #save-manual-log,
+html.dark #import-data-button,
+html.dark #inactivity-save-manual-log, /* Style for embedded save */
+html.dark #mark-done-button /* Added */
+{ background-color: #059669; color: white; }
+html.dark #interrupted-log-log:hover, html.dark #save-manual-log:hover,
+html.dark #import-data-button:hover,
+html.dark #inactivity-save-manual-log:hover,
+html.dark #mark-done-button:hover /* Added */
+{ background-color: #047857; }
+
+html.dark #export-data-button, html.dark #toggle-manual-log-form
+/* Note: inactivity-toggle-log-button removed from HTML */
+{ background-color: #2563eb; color: white; }
+html.dark #export-data-button:hover, html.dark #toggle-manual-log-form:hover
+{ background-color: #1d4ed8; }
+
+html.dark #aggregated-summary-button { background-color: #7e22ce; color: white; } /* Purple */
+html.dark #aggregated-summary-button:hover { background-color: #6b21a8; }
+
+/* Visibility for Mark Done Button */
+#mark-done-button.hidden { display: none; }
+#mark-done-button { transition: opacity 0.3s ease, transform 0.15s ease; } /* Add transition for smooth show/hide */
+
+
+/* Ensure Add Task/Project buttons have same height */
+#add-task-button, #add-project-button { height: 2.5rem; display: inline-flex; align-items: center; }
+
+/* Tasks */
+.completed { text-decoration: line-through; } /* Base completed style */
+html.dark .task-item.completed .task-text-span { color: #6b7280; } /* Dark mode completed text */
+.task-pomodoros { margin-left: 0.5rem; font-size: 0.9em; color: #ef4444; }
+.active-task { border-left-width: 4px; border-left-color: #4f46e5; background-color: #eef2ff; transition: background-color 0.3s ease, border-color 0.3s ease; }
+html.dark .active-task { border-left-color: #a5b4fc; background-color: #3730a3; } /* Darker indigo */
+
+/* Tabs */
+.tab-button { padding: 0.5rem 1rem; border-radius: 0.375rem; font-weight: 500; color: #4b5563; cursor: pointer; transition: background-color 0.2s, color 0.2s, transform 0.15s ease; }
+html.dark .tab-button { color: #9ca3af; }
+.tab-button:hover { background-color: #e5e7eb; transform: translateY(-1px); }
+html.dark .tab-button:hover { background-color: #374151; }
+.tab-button.active { background-color: #4f46e5; color: white; transform: none; }
+html.dark .tab-button.active { background-color: #4338ca; color: white; }
+
+/* Projects */
+.project-group { margin-bottom: 1rem; }
+.project-header { font-weight: 600; color: #374151; margin-bottom: 0.5rem; padding-bottom: 0.25rem; border-bottom: 1px solid #e5e7eb; }
+html.dark .project-header { color: #d1d5db; border-bottom-color: #4b5563; }
+.task-item { cursor: grab; transition: box-shadow 0.2s ease, background-color 0.2s ease, opacity 0.3s ease; } /* Base task item */
+.task-item:not(.completed) { background-color: #ffffff; border: 1px solid #e5e7eb; } /* Incomplete task light */
+html.dark .task-item:not(.completed) { background-color: #1f2937; border-color: #374151; } /* Incomplete task dark */
+.task-item:not(.completed):hover { box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px -1px rgba(0,0,0,0.1); background-color: #f9fafb; } /* Incomplete hover light */
+html.dark .task-item:not(.completed):hover { background-color: #374151; box-shadow: 0 1px 3px 0 rgba(255,255,255,0.05), 0 1px 2px -1px rgba(255,255,255,0.05); } /* Incomplete hover dark */
+
+/* Completed Task Specific Styles */
+.task-item.completed-task-item { /* Use a specific class for completed items if needed */
+    opacity: 0.70; background-color: #f9fafb; border: 1px solid #e5e7eb; cursor: default;
+}
+html.dark .task-item.completed-task-item {
+    opacity: 0.60; background-color: #1f2937; border-color: #374151;
+}
+.task-item.completed-task-item .task-text-span {
+    color: #6b7280; text-decoration: line-through;
+}
+html.dark .task-item.completed-task-item .task-text-span {
+    color: #4b5563;
+}
+.task-item.completed-task-item:hover {
+    background-color: #f3f4f6;
+}
+html.dark .task-item.completed-task-item:hover {
+    background-color: #374151;
+}
+
+
+/* Task Item Text & Icons Dark Mode */
+html.dark .task-text-span { color: #e5e7eb; } /* Default dark text */
+html.dark .task-item .text-green-600 { color: #34d399; } html.dark .task-item .hover\:text-green-800:hover { color: #a7f3d0; }
+html.dark .task-item .text-blue-500 { color: #60a5fa; } html.dark .task-item .hover\:text-blue-700:hover { color: #93c5fd; }
+html.dark .task-item .text-red-500 { color: #f87171; } html.dark .task-item .hover\:text-red-700:hover { color: #fca5a5; }
+html.dark .task-item.active-task .text-indigo-600 { color: #a5b4fc; }
+html.dark .task-item.completed-task-item .text-gray-400 { color: #4b5563; } html.dark .task-item.completed-task-item .hover\:text-red-500:hover { color: #f87171; } /* Delete hover on completed dark */
+
+/* Task Project Chip (for completed tasks) */
+.task-project-chip {
+    font-size: 0.7rem; /* xs */
+    padding: 0.1rem 0.4rem;
+    border-radius: 0.25rem; /* rounded */
+    margin-left: 0.5rem; /* ml-2 */
+    white-space: nowrap;
+    border-width: 1px;
+    border-style: solid;
+    /* background-color, color, border-color set inline */
+}
+
+.task-item:active { cursor: grabbing; }
+.drop-zone-active { background-color: #dbeafe; border: 2px dashed #93c5fd; }
+html.dark .drop-zone-active { background-color: #312e81; border-color: #6366f1; }
+.project-list-item { display: flex; align-items: center; justify-content: space-between; padding: 0.25rem 0.5rem; border-radius: 0.25rem; transition: background-color 0.2s ease; color: #374151; }
+html.dark .project-list-item { color: #d1d5db; }
+.project-list-item:hover { background-color: #f3f4f6; }
+html.dark .project-list-item:hover { background-color: #374151; }
+.project-list-item .project-actions { display: flex; gap: 0.25rem; opacity: 0; transition: opacity 0.2s ease-in-out;} /* Hide actions initially */
+.project-list-item:hover .project-actions { opacity: 1; } /* Show actions on hover */
+.project-color-swatch { width: 1rem; height: 1rem; border-radius: 0.25rem; margin-right: 0.5rem; border: 1px solid rgba(0,0,0,0.1); }
+html.dark .project-color-swatch { border-color: rgba(255,255,255,0.1); }
+.project-edit-btn, .project-delete-btn { color: #9ca3af; opacity: 0.5; transition: color 0.2s ease, opacity 0.2s ease; }
+.project-list-item:hover .project-edit-btn,
+.project-list-item:hover .project-delete-btn { opacity: 1; } /* Ensure full opacity on hover */
+.project-edit-btn:hover { color: #4f46e5; } /* Indigo */
+.project-delete-btn:hover { color: #dc2626; } /* Red */
+html.dark .project-edit-btn:hover { color: #a5b4fc; }
+html.dark .project-delete-btn:hover { color: #f87171; }
+
+
+/* Quick Project Buttons */
+.quick-projects-container { margin-top: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; }
+.quick-projects-label { font-size: 0.75rem; color: #6b7280; margin-right: 0.25rem; }
+html.dark .quick-projects-label { color: #9ca3af; }
+.quick-project-btn {
+    font-size: 0.75rem; padding: 0.15rem 0.5rem; border-radius: 9999px; border: 1px solid #d1d5db;
+    background-color: #f9fafb; color: #374151; cursor: pointer; display: inline-flex;
+    align-items: center; white-space: nowrap; transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease; /* Added color transition */
+}
+html.dark .quick-project-btn { background-color: #374151; color: #e5e7eb; border-color: #4b5563; }
+.quick-project-btn .project-color-swatch-xs { width: 0.6rem; height: 0.6rem; border-radius: 0.15rem; margin-right: 0.25rem; border: 1px solid rgba(0,0,0,0.1); transition: background-color 0.2s ease, border-color 0.2s ease; }
+html.dark .quick-project-btn .project-color-swatch-xs { border-color: rgba(255,255,255,0.1); }
+.quick-project-btn:hover { background-color: #f3f4f6; border-color: #9ca3af; }
+html.dark .quick-project-btn:hover { background-color: #4b5563; border-color: #6b7280; }
+.quick-project-btn.active { font-weight: 500; border-width: 2px; }
+html.dark .quick-project-btn.active { border-width: 2px; }
+/* Active state handled dynamically for light/dark text in JS */
+
+
+/* Timer Section */
+html.dark #timer-section-wrapper > div { background-color: #111827; } /* Darker bg for timer */
+html.dark #timer-status #timer-mode { color: #a5b4fc; } /* Lighter indigo */
+html.dark #timer-status #focused-task-display { color: #9ca3af; }
+html.dark #timer-display { color: #c7d2fe; } /* Lighter indigo */
+html.dark #progress-ring.text-indigo-600 { color: #818cf8; }
+html.dark #progress-ring.text-green-600 { color: #34d399; }
+html.dark #progress-ring.text-purple-600 { color: #a78bfa; }
+html.dark .text-gray-300 { color: #4b5563; } /* Darker gray for track */
+
+/* Timer Display Additions */
+#timer-elapsed-display { font-size: 0.9rem; color: #4b5563; margin-top: -0.5rem; margin-bottom: 0.75rem; height: 1.2em; transition: opacity 0.3s ease; }
+html.dark #timer-elapsed-display { color: #9ca3af; }
+#timer-elapsed-display.hidden { opacity: 0; pointer-events: none; } /* Use opacity for smooth hide/show */
+
+/* Headings and Labels */
+html.dark h2, html.dark h3, html.dark h4, html.dark h5 { color: #e5e7eb; }
+html.dark label { color: #d1d5db; }
+html.dark .text-gray-500 { color: #6b7280; }
+html.dark .text-gray-600 { color: #9ca3af; }
+html.dark .text-gray-700 { color: #d1d5db; }
+html.dark .text-gray-800 { color: #e5e7eb; }
+html.dark .text-gray-900 { color: #f9fafb; }
+html.dark .text-indigo-600 { color: #a5b4fc; }
+html.dark .hover\:underline:hover { text-decoration-color: #a5b4fc; }
+
+/* Inputs & Selects */
+html.dark input[type="text"], html.dark input[type="number"], html.dark input[type="date"], html.dark input[type="time"], html.dark select, html.dark textarea {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #e5e7eb;
+}
+html.dark input::placeholder, html.dark textarea::placeholder { color: #6b7280; }
+html.dark input:focus, html.dark select:focus, html.dark textarea:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 1px #6366f1;
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+}
+html.dark input[type="checkbox"] { background-color: #4b5563; border-color: #6b7280; }
+html.dark input[type="checkbox"]:checked { border-color: #4f46e5; background-color: #4f46e5; }
+html.dark input[type="color"] { border-color: #4b5563; }
+html.dark input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.7; }
+/* Ensure disabled inputs look right */
+input[type="time"]:disabled, input[type="date"]:disabled {
+     background-color: #e5e7eb; /* Light mode disabled bg */
+     opacity: 0.7;
+     cursor: not-allowed;
+}
+html.dark input[type="time"]:disabled, html.dark input[type="date"]:disabled {
+    background-color: #4b5563; /* Dark mode disabled bg */
+    opacity: 0.6;
+}
+
+
+/* Log Records */
+.log-record-item { display: flex; align-items: stretch; padding: 0.75rem 0.5rem; border-bottom: 1px solid #e5e7eb; gap: 0.75rem; transition: background-color 0.2s ease; }
+html.dark .log-record-item { border-bottom-color: #374151; }
+.log-record-item:hover { background-color: #f9fafb; }
+html.dark .log-record-item:hover { background-color: #1f2937; }
+.log-record-item:last-child { border-bottom: none; }
+.log-record-time { width: 6rem; text-align: right; font-size: 0.8rem; color: #6b7280; flex-shrink: 0; padding-top: 0.1rem; }
+html.dark .log-record-time { color: #9ca3af; }
+.log-record-line-and-details { flex-grow: 1; border-left: 3px solid #d1d5db; padding-left: 0.75rem; display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
+/* border-left-color is set dynamically */
+.log-record-details { flex-grow: 1; }
+.log-record-task { font-weight: 500; color: #1f2937; margin-bottom: 0.1rem; }
+html.dark .log-record-task { color: #e5e7eb; }
+.log-record-meta { font-size: 0.75rem; color: #4b5563; }
+html.dark .log-record-meta { color: #9ca3af; }
+.log-record-project { display: inline-block; padding: 0.1rem 0.4rem; border-radius: 0.25rem; font-size: 0.7rem; margin-left: 0.5rem; color: white; text-shadow: 1px 1px 1px rgba(0,0,0,0.1); }
+/* color/bg set dynamically */
+.log-record-actions { display: flex; gap: 0.25rem; flex-shrink: 0; padding-top: 0.1rem; opacity: 0; transition: opacity 0.2s ease-in-out;} /* Hide actions initially */
+.log-record-item:hover .log-record-actions { opacity: 1; } /* Show on hover */
+.log-record-edit, .log-record-delete { color: #9ca3af; transition: color 0.2s ease, transform 0.15s ease; }
+html.dark .log-record-edit, html.dark .log-record-delete { color: #6b7280; }
+.log-record-edit:hover { color: #4f46e5; transform: scale(1.1); }
+html.dark .log-record-edit:hover { color: #a5b4fc; }
+.log-record-delete:hover { color: #dc2626; transform: scale(1.1); }
+html.dark .log-record-delete:hover { color: #f87171; }
+
+/* Manual Log Form (Original) */
+#manual-log-form {
+     background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; margin-top: 1rem;
+}
+html.dark #manual-log-form {
+     background-color: #1f2937; border-color: #374151;
+}
+/* Shared Time Suggestion Button Styles (Original Duration Buttons) */
+#time-suggestion-container .time-suggestion-btn {
+    font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 9999px;
+    margin: 0 2px; cursor: pointer; border: 1px solid transparent; /* Base border */
+    background-color: #e0e7ff; color: #4338ca; /* Light mode default */
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+#time-suggestion-container .time-suggestion-btn:hover {
+    background-color: #c7d2fe;
+}
+html.dark #time-suggestion-container .time-suggestion-btn {
+    background-color: #3730a3; color: #e0e7ff; /* Dark mode default */
+}
+html.dark #time-suggestion-container .time-suggestion-btn:hover {
+    background-color: #4338ca;
+}
+/* Active state for original duration suggestion buttons */
+#time-suggestion-container .time-suggestion-btn.active {
+    background-color: #6366f1; color: white; /* Light mode active */
+    border-color: #4338ca;
+    font-weight: 600; /* Make active button bolder */
+}
+html.dark #time-suggestion-container .time-suggestion-btn.active {
+    background-color: #a5b4fc; color: #1e1b4b; /* Dark mode active */
+    border-color: #c7d2fe;
+}
+
+/* Inactivity Modal Time Mode Buttons */
+#inactivity-time-suggestion-container .time-suggestion-btn {
+    font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 9999px;
+    margin: 0 2px; cursor: pointer; border: 1px solid transparent;
+    background-color: #e5e7eb; color: #4b5563; /* Light mode default */
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+#inactivity-time-suggestion-container .time-suggestion-btn:hover {
+    background-color: #d1d5db;
+}
+html.dark #inactivity-time-suggestion-container .time-suggestion-btn {
+    background-color: #4b5563; color: #d1d5db; /* Dark mode default */
+}
+html.dark #inactivity-time-suggestion-container .time-suggestion-btn:hover {
+    background-color: #6b7280;
+}
+/* Active state for inactivity time mode buttons */
+#inactivity-time-suggestion-container .time-suggestion-btn.active {
+    background-color: #4f46e5; color: white; /* Light mode active */
+    border-color: #3730a3;
+    font-weight: 600;
+}
+html.dark #inactivity-time-suggestion-container .time-suggestion-btn.active {
+    background-color: #a5b4fc; color: #1e1b4b; /* Dark mode active */
+    border-color: #c7d2fe;
+}
+
+
+/* Embedded Manual Log Form Styles (Inactivity Modal) */
+#inactivity-manual-log-form {
+    margin-top: 1.5rem; /* Increased space above form */
+    padding-top: 1rem; /* Space below separator */
+    border-top: 1px solid #e5e7eb; /* Separator line */
+    background-color: transparent; /* Inherit modal background */
+    border: none; /* Remove outer border */
+    padding: 1rem 0 0 0; /* Adjust padding */
+    text-align: left; /* Align form elements left */
+}
+html.dark #inactivity-manual-log-form {
+    border-top-color: #374151;
+}
+#inactivity-manual-log-form h4 { /* Style the heading */
+    margin-bottom: 0.75rem; /* Space below heading */
+    text-align: center; /* Center heading */
+}
+#inactivity-manual-log-form label {
+    font-size: 0.75rem; /* text-xs */
+    margin-bottom: 0.1rem; /* Add slight space below label */
+    display: block; /* Ensure label takes full width */
+}
+#inactivity-manual-log-form input,
+#inactivity-manual-log-form select {
+    font-size: 0.875rem; /* text-sm */
+    padding: 0.4rem 0.5rem; /* Adjust padding */
+    width: 100%; /* Make inputs fill grid cell */
+}
+#inactivity-manual-log-form .grid {
+    gap: 0.75rem 1rem; /* Increased grid gap */
+}
+/* Container for Date/Time inputs in inactivity modal */
+#inactivity-custom-time-inputs {
+    display: none; /* Hidden by default */
+}
+#inactivity-custom-time-inputs.show {
+    display: grid; /* Show as grid when active */
+}
+
+#inactivity-manual-log-form button {
+    font-size: 0.875rem; /* text-sm */
+    padding: 0.3rem 0.8rem; /* Adjust button padding */
+}
+/* Inactivity Time Suggestion Container */
+#inactivity-time-suggestion-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem; /* Spacing between buttons */
+    padding-top: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+/* Remove specific styles for radio buttons if they exist */
+.inactivity-time-mode-selector label { display: none; }
+
+
+/* Views */
+.view { transition: opacity 0.3s ease-in-out; }
+.view-hidden { opacity: 0; pointer-events: none; position: absolute; width: 100%; }
+.view-visible { opacity: 1; position: relative; }
+
+/* Modals */
+.modal {
+    display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%;
+    overflow: auto; background-color: rgba(0,0,0,0.5);
+    /* Default: Center content */
+    justify-content: center; align-items: center;
+    animation: fadeIn 0.3s ease-out forwards;
+    padding: 1rem; /* Add padding for smaller screens */
+}
+html.dark .modal { background-color: rgba(0, 0, 0, 0.7); }
+
+.modal-content {
+    background-color: #fefefe; margin: auto; padding: 1.5rem; border: 1px solid #888;
+    width: 90%; max-width: 500px; border-radius: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+    transform: scale(0.95); animation: modalScaleIn 0.3s ease-out forwards;
+    max-height: 90vh; overflow-y: auto; /* Prevent overflow */
+}
+html.dark .modal-content { background-color: #1f2937; border-color: #4b5563; color: #d1d5db; }
+
+.modal-close-button { color: #aaa; position: absolute; top: 0.5rem; right: 0.75rem; font-size: 28px; font-weight: bold; cursor: pointer; transition: color 0.2s ease; }
+html.dark .modal-close-button { color: #6b7280; }
+.modal-close-button:hover, .modal-close-button:focus { color: black; text-decoration: none; }
+html.dark .modal-close-button:hover, html.dark .modal-close-button:focus { color: #e5e7eb; }
+
+#confirmation-message { white-space: pre-wrap; } /* Allow line breaks in confirmation */
+
+/* --- Specific Modal Positioning --- */
+
+/* Interrupted Log Confirmation Modal (Bottom) */
+#interrupted-log-confirmation-modal {
+    align-items: flex-end; /* Align content to bottom */
+    justify-content: center; /* Keep content centered horizontally */
+    padding-bottom: 1rem; /* Add space from bottom edge */
+}
+#interrupted-log-confirmation-modal .modal-content {
+    margin: 0 auto; /* Override default auto margin */
+    max-width: 600px; /* Optional: Make it wider */
+    animation: modalSlideUp 0.3s ease-out forwards; /* Use slide-up animation */
+    transform: translateY(20px); /* Start slightly below for slide up */
+}
+
+/* Select Task Modal Specifics */
+#select-task-modal .modal-content { max-height: 80vh; display: flex; flex-direction: column; }
+#select-task-list { max-height: 50vh; overflow-y: auto; margin-bottom: 1rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; padding: 0.5rem; }
+html.dark #select-task-list { border-color: #374151; }
+#select-task-list label { display: block; padding: 0.5rem; border-radius: 0.25rem; cursor: pointer; transition: background-color 0.2s ease; color: #1f2937; }
+html.dark #select-task-list label { color: #e5e7eb; }
+#select-task-list label:hover { background-color: #f3f4f6; }
+html.dark #select-task-list label:hover { background-color: #374151; }
+#select-task-list input[type="radio"] { margin-right: 0.5rem; }
+#select-task-list .task-project-name { font-size: 0.8rem; color: #6b7280; margin-left: 0.5rem; }
+html.dark #select-task-list .task-project-name { color: #9ca3af; }
+
+/* Animations */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+.animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+.animate-fade-out { animation: fadeOut 0.3s ease-in forwards; }
+@keyframes slideInRightFadeIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+.animate-log-entry, .animate-task-entry, .animate-project-entry { animation: slideInRightFadeIn 0.4s ease-out forwards; }
+@keyframes modalScaleIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+@keyframes modalSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+
+/* Inputs */
+input[type="color"] { padding: 0.1rem; height: 2.5rem; width: 3rem; border-radius: 0.375rem; border: 1px solid #d1d5db; cursor: pointer; }
+input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; }
+#import-file-input { display: none; }
+
+/* Summary */
+#log-summary-column ul { list-style: disc; padding-left: 1.25rem; }
+#log-summary-column li { margin-bottom: 0.25rem; }
+#log-summary-column h5 { font-weight: 600; margin-top: 0.5rem; display: flex; align-items: center; }
+#project-pie-chart-container { height: 250px; }
+html.dark #log-summary-column { background-color: #111827; border-color: #374151; }
+html.dark #log-summary-column ul { color: #9ca3af; }
+
+/* --- Focus Mode Layout V4.1 (Fullscreen Background + Centered Timer) --- */
+/* Default layout */
+#view-timer { display: flex; flex-direction: column; height: 100%; } /* Mobile first, ensure height */
+@media (min-width: 768px) {
+    body:not(.timer-running-focus) #view-timer { flex-direction: row; }
+    body:not(.timer-running-focus) #timer-column { width: 41.666667%; } /* md:w-5/12 */
+    body:not(.timer-running-focus) #tasks-column { width: 58.333333%; padding-left: 1rem; } /* md:w-7/12 */
+}
+@media (min-width: 1024px) {
+     body:not(.timer-running-focus) #timer-column { width: 33.333333%; } /* lg:w-1/3 */
+     body:not(.timer-running-focus) #tasks-column { width: 66.666667%; } /* lg:w-2/3 */
+}
+
+/* Focus mode overrides */
+body.timer-running-focus {
+    background-color: #e0e7ff !important; /* Light mode focus bg - Light Indigo */
+    overflow: hidden; /* Prevent body scroll */
+}
+html.dark body.timer-running-focus {
+     background-color: #1e1b4b !important; /* Dark mode focus bg - Dark Indigo */
+}
+body.timer-running-focus header,
+body.timer-running-focus .flex.justify-center.space-x-4, /* Tabs */
+body.timer-running-focus #tasks-column,
+body.timer-running-focus #add-task-section,
+body.timer-running-focus #manage-projects-section,
+body.timer-running-focus #view-log /* Hide log view if somehow active */
+ {
+    display: none !important; /* Hide everything except timer column */
+}
+body.timer-running-focus #view-timer {
+    display: flex !important;
+    flex-direction: column !important; /* Force column layout */
+    justify-content: center; /* Center vertically */
+    align-items: center; /* Center horizontally */
+    height: 100%; /* Full height of main */
+    padding: 1rem;
+}
+body.timer-running-focus #timer-column {
+    width: auto !important; /* Let content size it */
+    height: auto !important;
+    position: relative; /* Keep in flow */
+    z-index: 10; /* Above potential future elements */
+    overflow: visible !important; /* Prevent scrollbars */
+    padding: 0 !important;
+    flex-grow: 0 !important; /* Don't allow it to grow */
+}
+ body.timer-running-focus #timer-section-wrapper {
+     width: 100%;
+     max-width: 500px; /* Max width for the timer card */
+     margin: 0; /* Reset margin */
+ }
+ /* Ensure timer card background contrasts with body */
+ body.timer-running-focus #timer-section-wrapper > div {
+     background-color: #f0f3ff; /* Slightly lighter than body */
+     box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+ }
+ html.dark body.timer-running-focus #timer-section-wrapper > div {
+      background-color: #1f2937; /* Dark gray-800 */
+      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.2), 0 4px 6px -4px rgb(0 0 0 / 0.2);
+ }
+ html.dark body.timer-running-focus #timer-display { color: #e0e7ff; }
+ html.dark body.timer-running-focus #timer-mode { color: #c7d2fe; }
+ html.dark body.timer-running-focus #focused-task-display { color: #9ca3af; }
+ html.dark body.timer-running-focus .text-gray-300 { color: #4b5563; } /* Track */
+ html.dark body.timer-running-focus #progress-ring.text-indigo-600 { color: #a5b4fc; }
+ html.dark body.timer-running-focus #progress-ring.text-green-600 { color: #6ee7b7; }
+ html.dark body.timer-running-focus #progress-ring.text-purple-600 { color: #c4b5fd; }
+
+
+ /* Keep timer size reasonable in focus mode */
+ body.timer-running-focus #timer-section-wrapper .relative {
+     width: 18rem; /* w-72 */
+     height: 18rem; /* h-72 */
+     margin-bottom: 1rem;
+ }
+ body.timer-running-focus #timer-section-wrapper #timer-display {
+     font-size: 3.75rem; /* text-6xl */
+ }
+  body.timer-running-focus #timer-section-wrapper .flex.justify-center {
+      transform: scale(1.0); /* Reset scaling */
+  }
+
+  /* Celebration GIF */
+  #celebration-gif {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 201; /* Above modals */
+      max-width: 80vw;
+      max-height: 60vh;
+      border-radius: 0.5rem; /* rounded-lg */
+      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+      display: none; /* Hidden by default */
+      pointer-events: none; /* Allow clicks to pass through GIF */
+  }
+
+  /* Dark Mode Toggle Switch */
+ .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+ .switch input { opacity: 0; width: 0; height: 0; }
+ .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 20px; }
+ .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+ input:checked + .slider { background-color: #4f46e5; }
+ input:checked + .slider:before { transform: translateX(20px); }
+ html.dark .slider { background-color: #4b5563; }
+ html.dark input:checked + .slider { background-color: #6366f1; }
+
+ /* --- Global Completed Tasks Section Styles --- */
+.global-completed-tasks-section {
+    margin-top: 1.5rem; /* Add more space above */
+    padding-top: 1rem;
+    border-top: 1px solid #d1d5db; /* Use solid border */
+}
+html.dark .global-completed-tasks-section {
+    border-top-color: #4b5563; /* Darker border */
+}
+.global-completed-tasks-summary {
+    cursor: pointer;
+    font-size: 1rem; /* Larger font size */
+    font-weight: 600; /* Semibold */
+    color: #4b5563; /* gray-600 */
+    display: flex;
+    align-items: center;
+    gap: 0.3rem; /* space between icon and text */
+    padding: 0.5rem 0.25rem; /* Adjust padding */
+    border-radius: 0.25rem;
+    transition: background-color 0.2s ease;
+    list-style: none; /* Remove default marker */
+    margin-bottom: 0.5rem; /* Space below summary */
+}
+.global-completed-tasks-summary::-webkit-details-marker { display: none; } /* Hide marker */
+.global-completed-tasks-summary:hover {
+    background-color: #f3f4f6; /* gray-100 */
+}
+html.dark .global-completed-tasks-summary {
+    color: #9ca3af; /* gray-400 */
+}
+html.dark .global-completed-tasks-summary:hover {
+    background-color: #374151; /* gray-700 */
+}
+.global-completed-tasks-summary .chevron-icon {
+    transition: transform 0.2s ease-in-out;
+    color: #6b7280; /* gray-500 */
+}
+html.dark .global-completed-tasks-summary .chevron-icon {
+    color: #9ca3af; /* gray-400 */
+}
+/* Rotate chevron when details is open */
+details[open] > .global-completed-tasks-summary .chevron-icon {
+    /* transform: rotate(90deg); */ /* Using chevron down */
+}
+.global-completed-tasks-list {
+    padding-left: 0.5rem; /* Indent completed tasks slightly */
+    margin-top: 0.5rem;
+}
+.completed-project-header {
+    font-size: 0.875rem; /* text-sm */
+    font-weight: 600; /* semibold */
+    color: #374151; /* gray-700 */
+    margin-top: 0.75rem; /* mt-3 */
+    margin-bottom: 0.25rem; /* mb-1 */
+    padding-bottom: 0.25rem;
+    border-bottom: 1px dashed #e5e7eb; /* Optional separator */
+}
+html.dark .completed-project-header {
+    color: #d1d5db; /* gray-300 */
+    border-bottom-color: #4b5563;
+}
+
+/* --- Inactivity Timer Display --- */
+#inactivity-timer-display {
+    position: fixed; /* Or absolute within a container */
+    bottom: 0.5rem; /* Adjust as needed */
+    left: 0.5rem;  /* Adjust as needed */
+    background-color: rgba(0, 0, 0, 0.1);
+    color: #4b5563; /* gray-600 */
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem; /* text-xs */
+    z-index: 5; /* Below notifications */
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+html.dark #inactivity-timer-display {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #9ca3af; /* gray-400 */
+}
+
+/* --- Inactivity Modal Specific Styles --- */
+#inactivity-modal .modal-content {
+    max-width: 600px; /* Increased width */
+    text-align: center;
+}
+#inactivity-cheeky-statement {
+    font-size: 1.25rem; /* text-xl */
+    font-weight: 600; /* semibold */
+    color: #374151; /* gray-700 */
+    margin-bottom: 0.75rem; /* mb-3 */
+}
+html.dark #inactivity-cheeky-statement {
+    color: #e5e7eb; /* gray-200 */
+}
+#inactivity-quote-blockquote {
+    margin-bottom: 1rem; /* Reduced margin */
+    padding-left: 1rem; /* pl-4 */
+    border-left: 4px solid #d1d5db; /* gray-300 */
+    font-style: italic;
+}
+html.dark #inactivity-quote-blockquote {
+    border-left-color: #4b5563; /* gray-600 */
+}
+#inactivity-quote-text {
+    color: #4b5563; /* gray-600 */
+    font-size: 1rem; /* text-base */
+}
+html.dark #inactivity-quote-text {
+    color: #d1d5db; /* gray-300 */
+}
+#inactivity-quote-author {
+    margin-top: 0.25rem; /* mt-1 */
+    font-size: 0.875rem; /* text-sm */
+    color: #6b7280; /* gray-500 */
+    font-style: normal; /* Override blockquote italic */
+}
+html.dark #inactivity-quote-author {
+    color: #9ca3af; /* gray-400 */
+}
+
+/* --- Aggregated Summary Modal --- */
+#aggregated-summary-modal .modal-content {
+    max-width: 800px; /* Make this modal wider */
+}
+#aggregated-summary-modal .modal-content.wide-modal { /* Specific class if needed */
+     max-width: 800px;
+}
+#aggregated-summary-text-container .project-summary-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+html.dark #aggregated-summary-text-container .project-summary-item {
+    border-bottom-color: #374151;
+}
+#aggregated-summary-text-container .project-summary-item:last-child {
+    border-bottom: none;
+}
+#aggregated-summary-text-container .project-name {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem; /* space between swatch and name */
+}
+#aggregated-summary-text-container .project-time {
+    font-weight: 500;
+}
+
+
+/* --- Ensure modals stack correctly if multiple appear --- */
+#confirmation-modal, /* Generic confirmation */
+#edit-log-modal,
+#edit-project-modal,
+#select-task-modal,
+#interrupted-log-confirmation-modal /* Specific confirmation now at bottom */
+ { z-index: 101; } /* Base modals */
+#settings-modal { z-index: 100; } /* Settings potentially below others if opened first */
+#inactivity-modal { z-index: 102; } /* Inactivity popup */
+#aggregated-summary-modal { z-index: 103; } /* Aggregated summary on top */
+#celebration-gif { z-index: 201; } /* GIF above all modals */
+#notification-area { z-index: 200; } /* Notifications above most elements */
+#reminder-alert-modal { z-index: 105; } /* Reminder alert highest */
+
+/* --- Add styles for Confetti canvas if needed (often absolute positioned) --- */
+/* canvas-confetti typically creates its own canvas */
+/* canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 200; } */
+
+/* --- Project Specific Add Task Form --- */
+.project-add-task-form {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem; /* space-x-2 */
+    padding: 0.25rem 0.5rem; /* Reduced padding */
+    margin-top: 0.25rem; /* Reduced margin */
+    background-color: transparent; /* Removed background */
+    border-top: none; /* Removed top border */
+    /* border-radius: 0 0 0.5rem 0.5rem; Removed bottom rounding */
+}
+html.dark .project-add-task-form {
+    background-color: transparent;
+    border-top-color: transparent;
+}
+
+.project-add-task-input {
+    flex-grow: 1;
+    font-size: 0.875rem; /* text-sm */
+    padding: 0.3rem 0.5rem; /* Smaller padding */
+    border-radius: 0.375rem; /* rounded-md */
+    border: 1px solid #e5e7eb; /* Lighter border */
+    background-color: #f9fafb; /* Slightly off-white bg */
+    color: #1f2937;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+html.dark .project-add-task-input {
+    background-color: #374151; /* dark:bg-gray-700 */
+    border-color: #4b5563; /* dark:border-gray-600 */
+    color: #e5e7eb; /* dark:text-gray-200 */
+}
+html.dark .project-add-task-input::placeholder {
+    color: #6b7280; /* dark:placeholder-gray-400 */
+}
+.project-add-task-input:focus {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    border-color: #4f46e5; /* focus:border-indigo-500 */
+    box-shadow: 0 0 0 1px #4f46e5; /* focus:ring-1 focus:ring-indigo-500 */
+    background-color: white; /* White bg on focus */
+}
+html.dark .project-add-task-input:focus {
+    border-color: #6366f1; /* dark:focus:border-indigo-400 */
+    box-shadow: 0 0 0 1px #6366f1; /* dark:focus:ring-indigo-400 */
+    background-color: #4b5563; /* Slightly lighter dark bg on focus */
+}
+
+.project-add-task-button {
+    flex-shrink: 0;
+    padding: 0.3rem; /* Smaller padding */
+    border-radius: 0.375rem; /* rounded-md */
+    background-color: transparent; /* Transparent background */
+    color: #9ca3af; /* Subtle gray icon color */
+    box-shadow: none; /* No shadow */
+    border: 1px solid transparent; /* Add border for spacing consistency */
+}
+.project-add-task-button:hover {
+    background-color: #f3f4f6; /* Subtle hover background */
+    color: #4f46e5; /* Indigo icon color on hover */
+    transform: none; /* Disable button hover transform */
+    box-shadow: none; /* Ensure no shadow on hover */
+}
+html.dark .project-add-task-button {
+    color: #6b7280; /* Darker subtle gray */
+}
+html.dark .project-add-task-button:hover {
+    background-color: #374151; /* Subtle dark hover background */
+    color: #a5b4fc; /* Lighter indigo on dark hover */
+}
+
+
+/* --- Reminder List Styles --- */
+.reminder-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem; /* rounded-lg */
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb; /* border-gray-200 */
+    transition: background-color 0.2s ease;
+}
+html.dark .reminder-item {
+    background-color: #1f2937; /* dark:bg-gray-800 */
+    border-color: #374151; /* dark:border-gray-700 */
+}
+.reminder-item:hover {
+    background-color: #f9fafb; /* hover:bg-gray-50 */
+}
+html.dark .reminder-item:hover {
+    background-color: #374151; /* dark:hover:bg-gray-700 */
+}
+
+.reminder-details {
+    flex-grow: 1;
+    margin-right: 0.5rem; /* mr-2 */
+}
+
+.reminder-text {
+    font-weight: 500; /* font-medium */
+    color: #1f2937; /* text-gray-800 */
+}
+html.dark .reminder-text {
+    color: #e5e7eb; /* dark:text-gray-200 */
+}
+
+.reminder-time-display {
+    font-size: 0.875rem; /* text-sm */
+    color: #6b7280; /* text-gray-500 */
+}
+html.dark .reminder-time-display {
+    color: #9ca3af; /* dark:text-gray-400 */
+}
+
+.reminder-delete-btn {
+    color: #ef4444; /* text-red-500 */
+    padding: 0.25rem; /* p-1 */
+    border-radius: 0.25rem; /* rounded */
+    transition: background-color 0.2s, color 0.2s;
+}
+.reminder-delete-btn:hover {
+    color: #dc2626; /* hover:text-red-700 */
+    background-color: #fee2e2; /* hover:bg-red-100 */
+}
+html.dark .reminder-delete-btn {
+    color: #f87171; /* dark:text-red-400 */
+}
+html.dark .reminder-delete-btn:hover {
+    color: #fca5a5; /* dark:hover:text-red-300 */
+    background-color: #450a0a; /* dark:hover:bg-red-900 */
+}
+
+/* --- Reminder Alert Modal Styles --- */
+#reminder-alert-modal .modal-content {
+    border: 2px solid #f59e0b; /* border-yellow-500 */
+    box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.2), 0 4px 6px -4px rgba(245, 158, 11, 0.2); /* Yellow shadow */
+}
+html.dark #reminder-alert-modal .modal-content {
+    border-color: #facc15; /* dark:border-yellow-400 */
+     box-shadow: 0 10px 15px -3px rgba(250, 204, 21, 0.15), 0 4px 6px -4px rgba(250, 204, 21, 0.15);
+}
+
+/* Add pulse animation */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .6; }
+}
+.animate-pulse {
+  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Ensure datetime-local input shows calendar icon */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.6;
+    filter: invert(0.5); /* Adjust filter for visibility */
+}
+html.dark input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    filter: invert(1) brightness(0.8); /* Adjust for dark mode */
+}
+
+/* --- NLP Time Suggestion Button Styles --- */
+.nlp-suggestion-btn {
+    display: block; /* Make it block to take full width */
+    width: 100%;
+    text-align: left;
+    font-size: 0.75rem; /* text-xs */
+    padding: 0.25rem 0.5rem; /* py-1 px-2 */
+    border-radius: 0.25rem; /* rounded */
+    border: 1px solid #d1d5db; /* border-gray-300 */
+    background-color: #f9fafb; /* bg-gray-50 */
+    color: #374151; /* text-gray-700 */
+    cursor: pointer;
+    transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    margin-bottom: 0.25rem; /* space-y-1 handled by container, but good fallback */
+}
+.nlp-suggestion-btn:hover {
+    background-color: #eef2ff; /* bg-indigo-100 */
+    border-color: #a5b4fc; /* border-indigo-300 */
+    color: #4338ca; /* text-indigo-700 */
+}
+/* Style for the currently applied suggestion */
+.nlp-suggestion-btn.nlp-suggestion-applied {
+    border-color: #4f46e5; /* border-indigo-600 */
+    background-color: #e0e7ff; /* bg-indigo-100 */
+    color: #3730a3; /* text-indigo-800 */
+    font-weight: 600; /* semibold */
+    box-shadow: 0 0 0 1px #a5b4fc; /* ring-1 ring-indigo-300 */
+}
+.nlp-suggestion-btn.nlp-suggestion-applied:hover {
+    background-color: #c7d2fe; /* Slightly darker indigo on hover when applied */
+}
+
+/* Dark mode styles for NLP suggestions */
+html.dark .nlp-suggestion-btn {
+    border-color: #4b5563; /* dark:border-gray-600 */
+    background-color: #374151; /* dark:bg-gray-700 */
+    color: #d1d5db; /* dark:text-gray-300 */
+}
+html.dark .nlp-suggestion-btn:hover {
+    background-color: #312e81; /* dark:bg-indigo-900 */
+    border-color: #6366f1; /* dark:border-indigo-500 */
+    color: #e0e7ff; /* dark:text-indigo-200 */
+}
+/* Dark mode style for applied suggestion */
+html.dark .nlp-suggestion-btn.nlp-suggestion-applied {
+    border-color: #818cf8; /* dark:border-indigo-400 */
+    background-color: #3730a3; /* dark:bg-indigo-900 */
+    color: #c7d2fe; /* dark:text-indigo-200 */
+    box-shadow: 0 0 0 1px #6366f1; /* dark:ring-1 dark:ring-indigo-500 */
+}
+html.dark .nlp-suggestion-btn.nlp-suggestion-applied:hover {
+    background-color: #4338ca; /* Slightly darker indigo on hover when applied */
+}
+
+/* Style for the parts within the button */
+.nlp-suggestion-btn .font-medium { font-weight: 500; }
+.nlp-suggestion-btn .ml-1 { margin-left: 0.25rem; }
+
+/* Ensure suggestion containers are hidden by default if empty */
+#manual-log-time-suggestions:empty,
+#inactivity-log-time-suggestions:empty {
+    display: none;
+}
+
+/* --- Improved Reminder Alert Modal Styles --- */
+#reminder-alert-modal .modal-content.reminder-alert-content {
+    /* Background and Border already applied via Tailwind in HTML */
+    /* Add a subtle animation */
+    animation: fadeInScaleUp 0.4s ease-out forwards;
+}
+
+/* Animation for modal appearance */
+@keyframes fadeInScaleUp {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Animation for the icon */
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(-15%);
+        animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+    }
+    50% {
+        transform: translateY(0);
+        animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+    }
+}
+.animate-bounce {
+    animation: bounce 1s infinite;
+}
+
+/* Remove default pulsing from original example if it exists */
+/* #reminder-alert-modal h2.animate-pulse { animation: none; } */
+
+/* Style the Snooze button */
+#reminder-snooze-button {
+    /* Styling primarily done via Tailwind classes in HTML */
+}
+
+/* --- Fix Reminder Suggestion Layout Glitch --- */
+
+/* 1. Make the container holding the text input and suggestions relative */
+/* Find the div wrapping reminder-text and reminder-time-suggestions */
+/* It currently has classes like "flex-grow min-w-[200px]" */
+#view-reminders .flex-grow { /* Target the specific flex-grow div in the reminder section */
+    position: relative; /* Needed for absolute positioning of the child */
+}
+
+/* 2. Position the suggestion container absolutely */
+#reminder-time-suggestions {
+    position: absolute;
+    background-color: #ffffff; /* Add background */
+    border: 1px solid #d1d5db; /* Add border */
+    border-radius: 0.375rem; /* Add rounding */
+    padding: 0.5rem; /* Add padding */
+    margin-top: 0.25rem; /* Adjust spacing from input */
+    left: 0;
+    right: 0; /* Make it full width of the parent */
+    z-index: 10; /* Ensure it appears above other elements */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* Add shadow */
+    max-height: 150px; /* Limit height and allow scrolling if needed */
+    overflow-y: auto; /* Add scrollbar if suggestions exceed max-height */
+    /* Ensure it's hidden when empty (JS already handles this, but good CSS fallback) */
+    display: none;
+}
+
+/* Dark mode styles for the absolutely positioned suggestion container */
+html.dark #reminder-time-suggestions {
+    background-color: #1f2937; /* dark:bg-gray-800 */
+    border-color: #4b5563; /* dark:border-gray-600 */
+}
+
+/* Override display:none when suggestions are actively shown (JS adds content) */
+#reminder-time-suggestions:not(:empty) {
+    display: block;
+}
+
+/* Optional: Style for the suggestion buttons within the absolute container */
+#reminder-time-suggestions .nlp-suggestion-btn {
+   width: 100%; /* Ensure buttons take full width inside */
+}
+
+/* --- End Fix --- */

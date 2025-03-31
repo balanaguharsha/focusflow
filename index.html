@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FocusFlow - Pomodoro & Tasks</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
+    <script>
+        const LUCIDE_SPARKLES_URL = 'https://unpkg.com/lucide-static@latest/icons/sparkles.svg';
+    </script>
+    <link rel="stylesheet" href="style.css">
+    <script>
+        (function() {
+            const LS_SETTINGS_KEY = 'pomodoroSettings_v10'; // Use consistent key
+            try {
+                const storedSettings = localStorage.getItem(LS_SETTINGS_KEY);
+                if (storedSettings) {
+                    const settings = JSON.parse(storedSettings);
+                    if (settings.darkModeEnabled) {
+                        document.documentElement.classList.add('dark');
+                    }
+                }
+            } catch (e) { console.error("Failed to apply initial theme:", e); }
+        })();
+    </script>
+</head>
+<body class=""> <img id="celebration-gif" src="" alt="Celebration!" onerror="this.style.display='none'; this.src='';" style="display: none;">
+
+    <div class="flex flex-col h-screen">
+
+        <header class="bg-white dark:bg-gray-800 shadow-sm p-4 flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
+            <h1 class="text-2xl font-bold text-center text-indigo-700 dark:text-indigo-300">FocusFlow</h1>
+        </header>
+
+        <div class="flex justify-center space-x-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 flex-shrink-0">
+            <button id="tab-timer" class="tab-button active">Timer & Tasks</button>
+            <button id="tab-log" class="tab-button">Daily Log</button>
+            <button id="tab-reminders" class="tab-button">Reminders</button>
+        </div>
+
+        <main class="flex-grow overflow-hidden bg-gray-100 dark:bg-gray-900 md:p-4 relative custom-scrollbar">
+            <div class="h-full">
+
+                <div id="view-timer" class="view view-visible h-full flex flex-col md:flex-row gap-4">
+                    <div id="timer-column" class="w-full md:w-5/12 lg:w-1/3 flex flex-col p-4 md:p-0 custom-scrollbar">
+                        <div id="timer-section-wrapper">
+                             <div class="text-center bg-indigo-50 dark:bg-gray-800 p-6 rounded-lg shadow-inner dark:shadow-lg mb-6 flex-shrink-0">
+                                 <div id="timer-status" class="mb-2">
+                                     <span id="timer-mode" class="text-lg font-semibold text-indigo-600 dark:text-indigo-400">Work</span>
+                                     <span id="focused-task-display" class="text-sm text-gray-600 dark:text-gray-400 ml-2"></span>
+                                 </div>
+                                 <div class="relative w-48 h-48 mx-auto mb-1">
+                                     <svg class="w-full h-full" viewBox="0 0 100 100">
+                                         <circle class="text-gray-300 dark:text-gray-600 stroke-current" stroke-width="8" cx="50" cy="50" r="42" fill="transparent"></circle>
+                                         <circle id="progress-ring" class="text-indigo-600 dark:text-indigo-400 stroke-current"
+                                                 stroke-width="8" cx="50" cy="50" r="42" fill="transparent"
+                                                 stroke-linecap="round" transform="rotate(-90 50 50)"
+                                                 style="stroke-dasharray: 264; stroke-dashoffset: 264; transition: stroke-dashoffset 0.3s linear, stroke 0.3s ease;"></circle>
+                                     </svg>
+                                     <div id="timer-display" class="absolute inset-0 flex items-center justify-center text-4xl font-bold text-indigo-800 dark:text-indigo-200">25:00</div>
+                                 </div>
+                                 <div id="timer-elapsed-display" class="text-center text-sm text-gray-500 dark:text-gray-400 hidden">0:00 elapsed</div>
+                                 <div class="flex flex-wrap justify-center gap-x-2 md:gap-x-3 gap-y-2 mt-4">
+                                     <button id="start-pause-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow flex items-center justify-center space-x-1">
+                                         <span id="start-pause-icon-wrapper"></span> <span class="button-text text-sm md:text-base">Start</span>
+                                     </button>
+                                     <button id="reset-button" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg shadow flex items-center justify-center space-x-1">
+                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+                                         <span class="text-sm md:text-base">Reset</span>
+                                     </button>
+                                     <button id="skip-button" class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-lg shadow flex items-center justify-center space-x-1">
+                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="icon"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+                                         <span class="text-sm md:text-base">Skip</span>
+                                     </button>
+                                     <button id="mark-done-button" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow flex items-center justify-center space-x-1 hidden" title="Mark focused task as done">
+                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M20 6 9 17l-5-5"/></svg>
+                                         <span class="text-sm md:text-base">Done</span>
+                                     </button>
+                                     <button id="toggle-elapsed-button" class="bg-gray-200 hover:bg-gray-300 text-gray-700 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 font-semibold py-2 px-2 rounded-lg shadow flex items-center justify-center" title="Toggle Elapsed Time">
+                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-sm"><path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/></svg>
+                                     </button>
+                                     <button id="settings-button" class="bg-gray-200 hover:bg-gray-300 text-gray-700 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 font-semibold py-2 px-2 rounded-lg shadow flex items-center justify-center">
+                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" class="icon icon-sm"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.51a2 2 0 0 1 1-1.72l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                                     </button>
+                                 </div>
+                             </div>
+                        </div>
+
+                        <div id="add-task-section" class="space-y-1 mb-6 flex-shrink-0">
+                            <div class="flex items-center justify-between mb-1">
+                                <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200">Add Task</h2>
+                            </div>
+                            <div class="flex items-end space-x-2">
+                                <div class="flex-grow">
+                                    <label for="new-task-input" class="sr-only">Task description</label>
+                                    <input type="text" id="new-task-input" placeholder="Task description..." class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 dark:focus:ring-indigo-400 dark:focus:border-indigo-400">
+                                </div>
+                                <div class="w-1/3">
+                                    <label for="new-task-project" class="sr-only">Project</label>
+                                    <select id="new-task-project" class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg shadow-sm p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 dark:focus:ring-indigo-400 dark:focus:border-indigo-400"></select>
+                                </div>
+                                <button id="add-task-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold p-2 rounded-lg shadow flex-shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" class="icon"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                </button>
+                            </div>
+                            <div id="new-task-quick-projects" class="quick-projects-container"></div>
+                        </div>
+
+                        <div id="manage-projects-section" class="space-y-2 flex-shrink-0">
+                            <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-200">Manage Projects</h2>
+                            <div class="flex items-center space-x-2">
+                                <input type="text" id="new-project-input" placeholder="New project name..." class="flex-grow border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 dark:focus:ring-indigo-400 dark:focus:border-indigo-400">
+                                <input type="color" id="new-project-color" value="#6366f1" title="Choose project color" class="dark:border-gray-600">
+                                <button id="add-project-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold p-2 rounded-lg shadow flex-shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                                </button>
+                            </div>
+                            <div id="project-list" class="mt-3 space-y-1 text-sm max-h-32 overflow-y-auto custom-scrollbar">
+                                <p class="text-gray-500 dark:text-gray-400 italic">Loading projects...</p>
+                            </div>
+                       </div>
+                    </div>
+
+                    <div id="tasks-column" class="w-full md:w-7/12 lg:w-2/3 flex flex-col overflow-hidden p-4 md:p-0 md:pl-4">
+                        <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4 flex-shrink-0">Tasks by Project</h2>
+                        <div id="task-list-container" class="flex-grow overflow-y-auto custom-scrollbar border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 p-3 space-y-4">
+                            <p id="task-list-empty" class="text-gray-500 dark:text-gray-400 text-center italic">Loading tasks...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-log" class="view view-hidden h-full flex flex-col md:flex-row gap-4 p-4 md:p-0">
+                    <div class="w-full md:w-2/3 lg:w-3/4 flex flex-col overflow-hidden">
+                        <div class="flex flex-wrap justify-between items-center gap-2 mb-4 flex-shrink-0">
+                            <div class="flex items-center">
+                                <button id="log-prev-day" class="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400" title="Previous Day"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" class="icon icon-sm"><polyline points="15 18 9 12 15 6"/></svg></button>
+                                <button id="log-next-day" class="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400" title="Next Day"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" class="icon icon-sm"><polyline points="9 18 15 12 9 6"/></svg></button>
+                            </div>
+                            <div class="text-center flex-grow md:flex-grow-0 order-first md:order-none w-full md:w-auto mb-2 md:mb-0">
+                                <h2 id="log-date-display" class="text-lg font-semibold text-gray-700 dark:text-gray-200">Loading Date...</h2>
+                                <button id="log-today" class="text-sm text-indigo-600 dark:text-indigo-400 hover:underline">Go to Today</button>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <label for="log-jump-date" class="text-sm text-gray-600 dark:text-gray-400">Jump to:</label>
+                                <input type="date" id="log-jump-date" class="border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm p-1 text-sm focus:ring-indigo-500 focus:border-indigo-500 dark:focus:ring-indigo-400 dark:focus:border-indigo-400">
+                                <button id="aggregated-summary-button" class="bg-purple-500 hover:bg-purple-600 text-white text-sm font-medium py-1 px-3 rounded-md shadow-sm ml-2">View Summary</button>
+                            </div>
+                        </div>
+                        <div class="mb-4 text-right flex-shrink-0">
+                            <button id="toggle-manual-log-form" class="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium py-1 px-3 rounded-md shadow-sm">Add Manual Entry</button>
+                        </div>
+                        <form id="manual-log-form" style="display: none;" class="space-y-3 mb-4 flex-shrink-0 border border-gray-200 dark:border-gray-700 p-4 rounded-lg bg-gray-50 dark:bg-gray-800">
+                            <h3 class="text-md font-semibold text-gray-800 dark:text-gray-100 border-b dark:border-gray-600 pb-1">Log Manual Entry</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                    <label for="manual-log-task" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Task Name / Description:</label>
+                                    <input type="text" id="manual-log-task" list="task-suggestions" required class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-md shadow-sm p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 dark:focus:ring-indigo-400 dark:focus:border-indigo-400">
+                                    <datalist id="task-suggestions"></datalist>
+                                    <div id="manual-log-time-suggestions" class="mt-2 space-y-1"></div>
+                                </div>
+                                <div class="space-y-1">
+                                    <label for="manual-log-project" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Project:</label>
+                                    <select id="manual-log-project" required class="block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-md shadow-sm p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 dark:focus:ring-indigo-400 dark:focus:border-indigo-400"></select>
+                                    <div id="manual-log-quick-projects" class="quick-projects-container"></div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div>
+                                    <label for="manual-log-date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Date:</label>
+                                    <input type="date" id="manual-log-date" required class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 dark:focus:ring-indigo-400 dark:focus:border-indigo-400">
+                                </div>
+                                <div>
+                                    <label for="manual-log-start" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Start Time:</label>
+                                    <input type="time" id="manual-log-start" required class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 dark:focus:ring-indigo-400 dark:focus:border-indigo-400">
+                                </div>
+                                <div>
+                                    <label for="manual-log-end" class="block text-sm font-medium text-gray-700 dark:text-gray-300">End Time:</label>
+                                    <input type="time" id="manual-log-end" required class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 dark:focus:ring-indigo-400 dark:focus:border-indigo-400">
+                                </div>
+                            </div>
+                            <div class="text-xs text-gray-600 dark:text-gray-400 text-center space-x-1" id="time-suggestion-container">
+                                <span id="time-suggestion-label">Quick Add:</span>
+                                <button type="button" class="time-suggestion-btn" data-duration="15">Last 15m</button>
+                                <button type="button" class="time-suggestion-btn" data-duration="30">Last 30m</button>
+                                <button type="button" class="time-suggestion-btn" data-duration="45">Last 45m</button>
+                                <button type="button" class="time-suggestion-btn" data-duration="60">Last 1h</button>
+                                <button type="button" class="time-suggestion-btn" data-duration="120">Last 2h</button>
+                            </div>
+                             <div class="flex justify-end space-x-2 pt-2">
+                                <button type="button" id="cancel-manual-log" class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium py-1 px-3 rounded-md">Cancel</button>
+                                <button type="submit" id="save-manual-log" class="bg-green-500 hover:bg-green-600 text-white text-sm font-medium py-1 px-3 rounded-md shadow-sm">Save Log</button>
+                             </div>
+                        </form>
+                        <div id="log-record-list-container" class="flex-grow overflow-y-auto custom-scrollbar border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 p-2">
+                            <div id="log-record-list">
+                                </div>
+                            <p id="log-empty-message" class="text-gray-500 dark:text-gray-400 text-center italic p-4" style="display: none;">No logs for this day. Zzz...</p>
+                        </div>
+                    </div>
+                    <div id="log-summary-column" class="w-full md:w-1/3 lg:w-1/4 flex-shrink-0 flex flex-col border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 p-4 overflow-y-auto custom-scrollbar mt-4 md:mt-0">
+                        <h3 class="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-200 border-b dark:border-gray-600 pb-1 flex-shrink-0">Daily Summary</h3>
+                        <div id="project-pie-chart-container" class="w-full h-64 mx-auto mb-4 flex-shrink-0"><canvas id="project-pie-chart-canvas"></canvas></div>
+                        <h4 class="text-md font-semibold mt-4 mb-2 text-gray-600 dark:text-gray-300 border-b dark:border-gray-600 pb-1 flex-shrink-0">Logged Tasks</h4>
+                        <div id="verbal-summary" class="text-sm space-y-3 flex-grow"><p class="text-gray-500 dark:text-gray-400 italic">No summary available.</p></div>
+                    </div>
+                </div>
+
+                <div id="view-reminders" class="view view-hidden h-full p-4 space-y-4">
+                    <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200">Set a Reminder</h2>
+                    <div class="flex flex-wrap gap-2 items-end p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                        <div class="flex-grow min-w-[200px]">
+                            <label for="reminder-text" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Reminder:</label>
+                            <input type="text" id="reminder-text" placeholder="What to remind you about? (e.g., 'Call John tomorrow at 10am')" class="mt-1 w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            <div id="reminder-time-suggestions" class="mt-2 space-y-1"></div>
+                            </div>
+                        <div class="min-w-[180px]">
+                            <label for="reminder-time" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Time:</label>
+                            <input type="datetime-local" id="reminder-time" class="mt-1 w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                        <button id="add-reminder-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow flex-shrink-0 self-end">Add Reminder</button>
+                    </div>
+
+                    <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200 pt-4">Upcoming Reminders</h2>
+                    <div id="reminder-list-container" class="flex-grow overflow-y-auto custom-scrollbar border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 p-3 space-y-2">
+                        <p id="reminder-list-empty" class="text-gray-500 dark:text-gray-400 text-center italic">No reminders set.</p>
+                        </div>
+                </div>
+             </div>
+        </main>
+    </div>
+
+    <div id="settings-modal" class="modal">
+        <div class="modal-content relative dark:bg-gray-800 dark:border-gray-600">
+            <span id="close-modal-button" class="modal-close-button">&times;</span>
+            <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Settings</h2>
+            <div class="space-y-4 mb-6 border-b dark:border-gray-600 pb-4">
+                <h3 class="text-md font-semibold text-gray-600 dark:text-gray-300">Appearance</h3>
+                 <div class="flex items-center justify-between">
+                     <label for="dark-mode-toggle" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Dark Mode</label>
+                     <label class="switch"><input type="checkbox" id="dark-mode-toggle"><span class="slider"></span></label>
+                 </div>
+            </div>
+            <div class="space-y-4 mb-6 border-b dark:border-gray-600 pb-4">
+                <h3 class="text-md font-semibold text-gray-600 dark:text-gray-300">Timer Options</h3>
+                <div><label for="work-duration" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Work (min):</label><input type="number" id="work-duration" min="1" value="25" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"></div>
+                <div><label for="short-break-duration" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Short Break (min):</label><input type="number" id="short-break-duration" min="1" value="5" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"></div>
+                <div><label for="long-break-duration" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Long Break (min):</label><input type="number" id="long-break-duration" min="1" value="15" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"></div>
+                <div><label for="long-break-interval" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Long Break Interval:</label><input type="number" id="long-break-interval" min="1" value="4" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"></div>
+                <div class="flex items-center"><input type="checkbox" id="sound-enabled" checked class="h-4 w-4 text-indigo-600 rounded focus:ring-indigo-500"><label for="sound-enabled" class="ml-2 block text-sm text-gray-900 dark:text-gray-300">Sound Notifications</label></div>
+                <div class="flex items-center"><input type="checkbox" id="show-elapsed-enabled" class="h-4 w-4 text-indigo-600 rounded focus:ring-indigo-500"><label for="show-elapsed-enabled" class="ml-2 block text-sm text-gray-900 dark:text-gray-300">Show Elapsed Time on Timer</label></div>
+                <div>
+                    <label for="inactivity-timeout" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Show Inactivity Popup After (min):</label>
+                    <input type="number" id="inactivity-timeout" min="0" value="10" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Shows a popup if no activity for this duration (when timer is not running). Set to 0 to disable.</p>
+                </div>
+            </div>
+            <div class="space-y-3 mb-6 border-b dark:border-gray-600 pb-4">
+                 <h3 class="text-md font-semibold text-gray-600 dark:text-gray-300">Celebration GIFs</h3>
+                 <div>
+                     <label for="celebration-gif-urls" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Custom GIF URLs:</label>
+                     <textarea id="celebration-gif-urls" rows="3" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-md shadow-sm p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="Paste GIF URLs here, one per line..."></textarea>
+                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Add custom GIF URLs (one per line) to show randomly on task completion. Leave blank to use default.</p>
+                 </div>
+            </div>
+            <div class="space-y-3 mb-6">
+                 <h3 class="text-md font-semibold text-gray-600 dark:text-gray-300">Data Management</h3>
+                 <div class="flex flex-col sm:flex-row gap-3">
+                     <button id="export-data-button" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow text-sm">Export Data (.json)</button>
+                     <button id="import-data-button" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow text-sm">Import Data (.json)</button>
+                 </div>
+                 <input type="file" id="import-file-input" accept=".json" style="display: none;">
+                 <p class="text-xs text-gray-500 dark:text-gray-400 text-center">Importing will overwrite all current data. Export first!</p>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button id="save-settings-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="interrupted-log-confirmation-modal" class="modal">
+        <div class="modal-content relative dark:bg-gray-800 dark:border-gray-600">
+            <span id="close-interrupted-log-confirmation-button" class="modal-close-button">&times;</span>
+            <h2 class="text-lg font-semibold mb-3 text-gray-800 dark:text-gray-100">Task Completed!</h2>
+            <p class="mb-1 text-sm text-gray-600 dark:text-gray-300">Task: <strong id="interrupted-log-task" class="dark:text-gray-100"></strong></p>
+            <p class="mb-1 text-sm text-gray-600 dark:text-gray-300">Current focus session: <strong id="interrupted-log-current-duration" class="dark:text-gray-100"></strong> min.</p>
+            <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">Total time logged today: <strong id="interrupted-log-total-duration" class="dark:text-gray-100"></strong> min.</p>
+            <p class="mb-4 text-sm text-gray-800 dark:text-gray-200">Log the current focus session?</p>
+            <div class="flex justify-end space-x-3">
+                <button id="interrupted-log-discard" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md">Discard Session</button>
+                <button id="interrupted-log-log" class="bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded-md shadow-sm">Log Session</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirmation-modal" class="modal">
+         <div class="modal-content relative dark:bg-gray-800 dark:border-gray-600">
+            <span id="close-confirmation-button" class="modal-close-button">&times;</span>
+            <h2 class="text-lg font-semibold mb-3 text-gray-800 dark:text-gray-100" id="confirmation-title">Confirm Action</h2>
+            <p class="mb-4 text-sm text-gray-600 dark:text-gray-300" id="confirmation-message">Are you sure?</p>
+            <div class="flex justify-end space-x-3">
+                <button id="confirmation-cancel-button" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md">Cancel</button>
+                <button id="confirmation-confirm-button" class="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-md shadow-sm">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="edit-log-modal" class="modal">
+        <div class="modal-content relative dark:bg-gray-800 dark:border-gray-600">
+             <span id="close-edit-log-button" class="modal-close-button">&times;</span>
+             <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Edit Log Entry</h2>
+             <form id="edit-log-form" class="space-y-3">
+                 <input type="hidden" id="edit-log-id">
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                     <div>
+                         <label for="edit-log-task" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Task Name:</label>
+                         <input type="text" id="edit-log-task" list="task-suggestions" required class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-md shadow-sm p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                     </div>
+                     <div>
+                         <label for="edit-log-project" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Project:</label>
+                         <select id="edit-log-project" required class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-md shadow-sm p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500"></select>
+                     </div>
+                 </div>
+                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                     <div>
+                         <label for="edit-log-date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Date:</label>
+                         <input type="date" id="edit-log-date" required class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                     </div>
+                     <div>
+                         <label for="edit-log-start" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Start Time:</label>
+                         <input type="time" id="edit-log-start" required class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                     </div>
+                     <div>
+                         <label for="edit-log-end" class="block text-sm font-medium text-gray-700 dark:text-gray-300">End Time:</label>
+                         <input type="time" id="edit-log-end" required class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                     </div>
+                 </div>
+                 <div class="flex justify-end space-x-3 pt-4">
+                     <button type="button" id="cancel-edit-log-button" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md">Cancel</button>
+                     <button type="submit" id="save-edit-log-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md shadow-sm">Save Changes</button>
+                 </div>
+             </form>
+        </div>
+    </div>
+
+    <div id="edit-project-modal" class="modal">
+        <div class="modal-content relative dark:bg-gray-800 dark:border-gray-600">
+             <span id="close-edit-project-button" class="modal-close-button">&times;</span>
+             <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Edit Project</h2>
+             <form id="edit-project-form" class="space-y-4">
+                 <input type="hidden" id="edit-project-id">
+                 <div>
+                     <label for="edit-project-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Project Name:</label>
+                     <input type="text" id="edit-project-name" required class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500">
+                 </div>
+                 <div>
+                     <label for="edit-project-color" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Project Color:</label>
+                     <div class="flex items-center space-x-2 mt-1">
+                         <input type="color" id="edit-project-color" required class="p-1 h-10 w-14 block border border-gray-300 dark:border-gray-600 cursor-pointer rounded-lg">
+                         <span id="edit-project-color-value" class="text-sm text-gray-500 dark:text-gray-400"></span>
+                     </div>
+                 </div>
+                 <div class="flex justify-end space-x-3 pt-4">
+                     <button type="button" id="cancel-edit-project-button" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md">Cancel</button>
+                     <button type="submit" id="save-edit-project-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md shadow-sm">Save Changes</button>
+                 </div>
+             </form>
+        </div>
+    </div>
+
+    <div id="select-task-modal" class="modal">
+        <div class="modal-content relative dark:bg-gray-800 dark:border-gray-600">
+             <span id="close-select-task-button" class="modal-close-button">&times;</span>
+             <h2 class="text-lg font-semibold mb-3 text-gray-800 dark:text-gray-100">Select Task to Focus On?</h2>
+             <div id="select-task-list" class="max-h-[50vh] overflow-y-auto custom-scrollbar border border-gray-200 dark:border-gray-700 rounded-md p-2 space-y-1">
+                </div>
+             <div class="flex justify-end space-x-3 mt-4">
+                 <button id="start-without-task-button" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md">Start without Task</button>
+                 <button id="start-with-task-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md shadow-sm">Start with Selected Task</button>
+             </div>
+        </div>
+    </div>
+
+    <div id="inactivity-modal" class="modal">
+        <div class="modal-content relative dark:bg-gray-800 dark:border-gray-600">
+            <span id="close-inactivity-modal-button" class="modal-close-button">&times;</span>
+            <p id="inactivity-cheeky-statement" class="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-100"></p>
+            <blockquote id="inactivity-quote-blockquote" class="mb-4 border-l-4 border-gray-300 dark:border-gray-600 pl-4 italic">
+                <p id="inactivity-quote-text" class="text-gray-600 dark:text-gray-300">Loading quote...</p>
+                <footer id="inactivity-quote-author" class="text-sm text-gray-500 dark:text-gray-400 mt-1"></footer>
+            </blockquote>
+            <form id="inactivity-manual-log-form" class="space-y-3 mt-4 border-t dark:border-gray-600 pt-4">
+                <h4 class="text-md font-semibold text-gray-800 dark:text-gray-100 text-left">Log Manual Entry</h4>
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-2">
+                     <div>
+                         <label for="inactivity-manual-log-task" class="block text-xs font-medium text-gray-700 dark:text-gray-300">Task Name / Description:</label>
+                         <input type="text" id="inactivity-manual-log-task" list="task-suggestions" required class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-md shadow-sm p-1.5 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                         <div id="inactivity-log-time-suggestions" class="mt-2 space-y-1"></div>
+                     </div>
+                     <div class="space-y-1">
+                         <label for="inactivity-manual-log-project" class="block text-xs font-medium text-gray-700 dark:text-gray-300">Project:</label>
+                         <select id="inactivity-manual-log-project" required class="block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-md shadow-sm p-1.5 text-sm focus:ring-indigo-500 focus:border-indigo-500"></select>
+                         <div id="inactivity-quick-projects" class="quick-projects-container"></div>
+                     </div>
+                 </div>
+                 <div id="inactivity-custom-time-inputs" class="grid grid-cols-1 sm:grid-cols-3 gap-x-3 gap-y-2">
+                     <div>
+                         <label for="inactivity-manual-log-date" class="block text-xs font-medium text-gray-700 dark:text-gray-300">Date:</label>
+                         <input type="date" id="inactivity-manual-log-date" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm p-1.5 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                     </div>
+                     <div>
+                         <label for="inactivity-manual-log-start" class="block text-xs font-medium text-gray-700 dark:text-gray-300">Start Time:</label>
+                         <input type="time" id="inactivity-manual-log-start" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm p-1.5 text-sm focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50 disabled:bg-gray-100 dark:disabled:bg-gray-600">
+                     </div>
+                     <div>
+                         <label for="inactivity-manual-log-end" class="block text-xs font-medium text-gray-700 dark:text-gray-300">End Time:</label>
+                         <input type="time" id="inactivity-manual-log-end" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md shadow-sm p-1.5 text-sm focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50 disabled:bg-gray-100 dark:disabled:bg-gray-600">
+                     </div>
+                 </div>
+                 <div class="text-xs text-gray-600 dark:text-gray-400 text-center space-x-1 pt-1" id="inactivity-time-suggestion-container">
+                     <span id="inactivity-time-suggestion-label">Log Time:</span>
+                     <button type="button" class="time-suggestion-btn" data-mode="tillNow">Till Now</button>
+                     <button type="button" class="time-suggestion-btn" data-mode="15">Last 15m</button>
+                     <button type="button" class="time-suggestion-btn" data-mode="30">Last 30m</button>
+                     <button type="button" class="time-suggestion-btn" data-mode="60">Last 1h</button>
+                     <button type="button" class="time-suggestion-btn" data-mode="120">Last 2h</button>
+                     <button type="button" class="time-suggestion-btn" data-mode="custom">Custom</button>
+                 </div>
+                 <div class="flex justify-end space-x-2 pt-3">
+                     <button type="button" id="inactivity-cancel-manual-log" class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium py-1 px-3 rounded-md">Cancel Popup</button>
+                     <button type="submit" id="inactivity-save-manual-log" class="bg-green-500 hover:bg-green-600 text-white text-sm font-medium py-1 px-3 rounded-md shadow-sm">Save Log</button>
+                 </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="aggregated-summary-modal" class="modal">
+        <div class="modal-content wide-modal relative dark:bg-gray-800 dark:border-gray-600">
+             <span id="close-aggregated-summary-button" class="modal-close-button">&times;</span>
+             <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Aggregated Log Summary</h2>
+             <div class="flex flex-wrap items-end gap-4 mb-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                 <div>
+                     <label for="summary-start-date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Start Date:</label>
+                     <input type="date" id="summary-start-date" required class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-gray-200 rounded-md shadow-sm p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                 </div>
+                 <div>
+                     <label for="summary-end-date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">End Date:</label>
+                     <input type="date" id="summary-end-date" required class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-gray-200 rounded-md shadow-sm p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                 </div>
+                 <button id="generate-summary-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow text-sm">Generate Summary</button>
+             </div>
+             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 <div id="aggregated-summary-text-container" class="md:col-span-1 space-y-3 text-sm custom-scrollbar pr-2" style="max-height: 400px; overflow-y: auto;">
+                     <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-200 border-b dark:border-gray-600 pb-1">Totals by Project</h3>
+                     <p class="text-gray-500 dark:text-gray-400 italic">Select dates and generate summary...</p>
+                 </div>
+                 <div id="aggregated-line-chart-container" class="md:col-span-2" style="height: 400px;">
+                     <canvas id="aggregated-line-chart-canvas"></canvas>
+                 </div>
+             </div>
+        </div>
+    </div>
+
+    <div id="shortcut-add-task-modal" class="modal">
+        <div class="modal-content relative dark:bg-gray-800 dark:border-gray-600" style="max-width: 600px;">
+             <span id="close-shortcut-add-task-button" class="modal-close-button">&times;</span>
+             <h2 class="text-lg font-semibold mb-3 text-gray-800 dark:text-gray-100">Quick Add Task (Cmd/Ctrl+Shift+H)</h2>
+             <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">Enter task description. We'll try to assign it to the best project.</p>
+             <div>
+                 <label for="shortcut-task-input" class="sr-only">Task Description</label>
+                 <input type="text" id="shortcut-task-input" placeholder="e.g., LC 345 or Fix login bug for Project X..." class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 dark:focus:ring-indigo-400 dark:focus:border-indigo-400">
+             </div>
+             <p id="shortcut-predicted-project" class="text-xs text-gray-500 dark:text-gray-400 mt-2 italic h-4"></p>
+             </div>
+    </div>
+
+    <div id="reminder-alert-modal" class="modal z-[105]">
+        <div class="modal-content reminder-alert-content relative dark:bg-gray-800 dark:border-gray-700 max-w-md text-center p-6 rounded-lg shadow-xl border-2 border-yellow-400 dark:border-yellow-500 bg-yellow-50 dark:bg-gray-800/90 backdrop-blur-sm">
+            <div class="mx-auto mb-4 flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 dark:bg-yellow-900">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-600 dark:text-yellow-400 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <h2 class="text-xl font-bold mb-2 text-yellow-800 dark:text-yellow-300">Reminder!</h2>
+            <p class="mb-3 text-base text-gray-700 dark:text-gray-200 px-4" id="reminder-alert-text">Reminder text goes here.</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-6" id="reminder-alert-time">Set for: Loading...</p>
+            <div class="flex justify-center space-x-4">
+                <button id="reminder-snooze-button" class="bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 font-semibold py-2 px-5 rounded-lg shadow transition-transform transform hover:scale-105">Snooze (5m)</button>
+                <button id="reminder-ack-button" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-6 rounded-lg shadow transition-transform transform hover:scale-105">OK (Ack)</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification-area" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
+
+    <div id="inactivity-timer-display" class="fixed bottom-2 left-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs px-2 py-1 rounded shadow z-10">
+        Inactive Popup: Loading...
+    </div>
+
+    <script src="js/domElements.js"></script>
+    <script src="js/state.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/timer.js"></script>
+    <script src="js/projects.js"></script>
+    <script src="js/tasks.js"></script>
+    <script src="js/nlpTimeParser.js"></script> <script src="js/log.js"></script>
+    <script src="js/modals.js"></script>
+    <script src="js/importExport.js"></script>
+    <script src="js/inactivity.js"></script>
+    <script src="js/summary.js"></script>
+    <script src="js/reminders.js"></script>
+    <script src="js/main.js"></script> <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Example: Using the sparkles icon URL if needed later
+            // const iconImg = document.getElementById('some-icon-id');
+            // if (iconImg && typeof LUCIDE_SPARKLES_URL !== 'undefined') {
+            //     iconImg.src = LUCIDE_SPARKLES_URL;
+            // } else if (iconImg) {
+            //     console.error("Sparkles icon URL not defined or image element not found");
+            //     iconImg.alt = "AI Feature"; // Fallback alt text
+            // }
+        });
+    </script>
+
+</body>
+</html>
