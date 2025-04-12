@@ -1,24 +1,9 @@
-// js/main.js
-
-// --- Global Event Listeners Setup ---
-
-/**
- * Attaches all necessary event listeners to the DOM elements.
- */
 function setupEventListeners() {
     // Tab Switching
     if (tabTimer) tabTimer.addEventListener('click', () => showView('timer'));
     if (tabLog) tabLog.addEventListener('click', () => showView('log'));
     if (tabReminders) tabReminders.addEventListener('click', () => showView('reminders'));
 
-    // js/main.js
-
-
-
-    // Add Snooze button listener
-    if (reminderSnoozeButton) reminderSnoozeButton.addEventListener('click', handleReminderSnooze);
-
-// ... (rest of setupEventListeners) ...
     // Timer Controls
     if (startPauseButton) startPauseButton.addEventListener('click', handleStartPauseClick);
     if (resetButton) resetButton.addEventListener('click', () => resetTimer(true));
@@ -116,7 +101,6 @@ function setupEventListeners() {
           });
      } // End if (reminderTextInput)
 
-
     // Project Management
     if (addProjectButton) addProjectButton.addEventListener('click', addProject);
     if (newProjectInput) newProjectInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addProject(); });
@@ -206,7 +190,22 @@ function setupEventListeners() {
     if (closeEditLogButton) closeEditLogButton.addEventListener('click', closeEditLogModal);
     if (cancelEditLogButton) cancelEditLogButton.addEventListener('click', closeEditLogModal);
     if (editLogModal) window.addEventListener('click', (event) => { if (event.target === editLogModal) closeEditLogModal(); });
-    // No prediction listener added for edit log task input
+
+    // *** MODIFICATION START: Add project prediction listener to Edit Log Modal task input ***
+    if (editLogTaskInput && editLogProjectSelect) {
+        editLogTaskInput.addEventListener('input', () => {
+            // Call the existing prediction handler
+            // Pass null for the quick project container ID as it doesn't exist here
+            if (typeof handleTaskInputForPrediction === 'function') {
+                handleTaskInputForPrediction(editLogTaskInput, editLogProjectSelect, null);
+            } else {
+                console.error("handleTaskInputForPrediction function not found!");
+            }
+        });
+    } else {
+        console.warn("Edit log task input or project select not found for adding prediction listener.");
+    }
+    // *** MODIFICATION END ***
 
     // Edit Project Modal
     if (editProjectForm) editProjectForm.addEventListener('submit', handleEditProjectSubmit);
@@ -262,6 +261,8 @@ function setupEventListeners() {
     // Reminder Listeners
     if (addReminderButton) addReminderButton.addEventListener('click', addReminder);
     if (reminderAckButton) reminderAckButton.addEventListener('click', closeReminderAlertModal);
+    // Add Snooze button listener
+    if (reminderSnoozeButton) reminderSnoozeButton.addEventListener('click', handleReminderSnooze);
 
 }
 
