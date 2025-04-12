@@ -3,9 +3,10 @@
 // --- Local Storage Keys ---
 const LS_TASKS_KEY = 'pomodoroTasks_v6';
 const LS_PROJECTS_KEY = 'pomodoroProjects_v7';
-const LS_SETTINGS_KEY = 'pomodoroSettings_v10'; // Using latest key
+const LS_SETTINGS_KEY = 'pomodoroSettings_v10';
 const LS_LOG_KEY = 'pomodoroLogs_v4';
-const LS_REMINDERS_KEY = 'pomodoroReminders_v1'; // *** NEW KEY ***
+const LS_REMINDERS_KEY = 'pomodoroReminders_v1';
+const LS_WIDGETS_KEY = 'pomodoroWidgets_v1'; // NEW: Key for widgets
 
 // --- Constants (related to storage defaults) ---
 const DEFAULT_PROJECT_ID = 'inbox';
@@ -33,25 +34,22 @@ function loadTasks() {
     try {
         const storedTasks = localStorage.getItem(LS_TASKS_KEY);
         if (storedTasks) {
-            // Parse and ensure tasks have necessary properties
             tasks = JSON.parse(storedTasks).map(t => ({
                 ...t,
-                id: t.id || generateUniqueId('task'), // Ensure ID exists
-                projectId: t.projectId || DEFAULT_PROJECT_ID, // Ensure project ID exists
-                pomodorosCompleted: t.pomodorosCompleted || 0 // Ensure pomodoro count exists
+                id: t.id || generateUniqueId('task'),
+                projectId: t.projectId || DEFAULT_PROJECT_ID,
+                pomodorosCompleted: t.pomodorosCompleted || 0
             }));
         } else {
-            tasks = []; // Initialize if nothing is stored
+            tasks = [];
         }
     } catch (e) {
         console.error("Load tasks failed:", e);
-        tasks = []; // Reset on error
+        tasks = [];
         showNotification("Error loading tasks.", "error");
     }
-
-    // Validate activeTaskIndex
     if (activeTaskIndex !== null && !tasks.some(t => t.id === activeTaskIndex && !t.completed)) {
-        activeTaskIndex = null; // Reset if active task doesn't exist or is completed
+        activeTaskIndex = null;
         activeTaskFocusStartTime = null;
     }
 }
@@ -77,37 +75,31 @@ function loadProjects() {
     try {
         const storedProjects = localStorage.getItem(LS_PROJECTS_KEY);
         projects = storedProjects ? JSON.parse(storedProjects) : [];
-        nextColorIndex = projects.length; // Initialize color index based on loaded projects
+        nextColorIndex = projects.length;
     } catch (e) {
         console.error("Load projects failed:", e);
-        projects = []; // Reset on error
+        projects = [];
         showNotification("Error loading projects.", "error");
     }
-
-    // Ensure the default 'Inbox' project exists
     if (projects.length === 0 || !projects.some(p => p.id === DEFAULT_PROJECT_ID)) {
         projects.unshift({ id: DEFAULT_PROJECT_ID, name: 'Inbox', color: DEFAULT_PROJECT_COLOR, lastUsed: 0 });
     }
-
-    // Ensure all projects have a color and lastUsed timestamp
     let needsSave = false;
     projects = projects.map((p, idx) => {
         let updated = false;
         if (!p.color) {
-            const defaultColorIndex = idx % PROJECT_COLORS.length;
-            p.color = PROJECT_COLORS[defaultColorIndex];
+            p.color = PROJECT_COLORS[idx % PROJECT_COLORS.length];
             updated = true;
         }
         if (p.lastUsed === undefined) {
-            p.lastUsed = 0; // Initialize lastUsed
+            p.lastUsed = 0;
             updated = true;
         }
         if (updated) needsSave = true;
         return p;
     });
-
     if (needsSave) {
-        saveProjects(); // Save if any projects were updated
+        saveProjects();
     }
 }
 
@@ -119,7 +111,6 @@ function loadProjects() {
  */
 function saveSettings() {
     try {
-        // Ensure settings input elements exist before reading values
         const workDurationVal = workDurationInput ? parseInt(workDurationInput.value) : settings.workDuration;
         const shortBreakDurationVal = shortBreakDurationInput ? parseInt(shortBreakDurationInput.value) : settings.shortBreakDuration;
         const longBreakDurationVal = longBreakDurationInput ? parseInt(longBreakDurationInput.value) : settings.longBreakDuration;
@@ -130,7 +121,6 @@ function saveSettings() {
         const inactivityTimeoutVal = inactivityTimeoutInput ? parseInt(inactivityTimeoutInput.value) : settings.inactivityTimeoutMinutes;
         const gifUrlsVal = celebrationGifUrlsTextarea ? celebrationGifUrlsTextarea.value : settings.celebrationGifUrls.join('\n');
 
-        // Update settings object from input fields (with validation/clamping)
         settings.workDuration = Math.max(1, workDurationVal || 25);
         settings.shortBreakDuration = Math.max(1, shortBreakDurationVal || 5);
         settings.longBreakDuration = Math.max(1, longBreakDurationVal || 15);
@@ -138,22 +128,12 @@ function saveSettings() {
         settings.soundEnabled = soundEnabledVal;
         settings.showElapsedTime = showElapsedVal;
         settings.darkModeEnabled = darkModeVal;
-        settings.inactivityTimeoutMinutes = Math.max(0, inactivityTimeoutVal || 10); // Clamp inactivity timeout (0 disables)
+        settings.inactivityTimeoutMinutes = Math.max(0, inactivityTimeoutVal || 10);
+        settings.celebrationGifUrls = gifUrlsVal.split('\n').map(url => url.trim()).filter(url => url.length > 0);
 
-        // Process celebration GIF URLs
-        const urls = gifUrlsVal
-            .split('\n')
-            .map(url => url.trim())
-            .filter(url => url.length > 0);
-        settings.celebrationGifUrls = urls;
-
-        // Save to Local Storage
         localStorage.setItem(LS_SETTINGS_KEY, JSON.stringify(settings));
-
-        // *** Show notification on successful save ***
         showNotification('Settings saved!', 'success');
 
-        // Update input fields to reflect potentially clamped values (if elements exist)
         if (workDurationInput) workDurationInput.value = settings.workDuration;
         if (shortBreakDurationInput) shortBreakDurationInput.value = settings.shortBreakDuration;
         if (longBreakDurationInput) longBreakDurationInput.value = settings.longBreakDuration;
@@ -164,16 +144,11 @@ function saveSettings() {
         if (inactivityTimeoutInput) inactivityTimeoutInput.value = settings.inactivityTimeoutMinutes;
         if (celebrationGifUrlsTextarea) celebrationGifUrlsTextarea.value = settings.celebrationGifUrls.join('\n');
 
-        // Apply changes immediately
-        applyDarkMode(settings.darkModeEnabled); // Apply theme change
-        updateTimerDisplayAndProgress(); // Update timer display if needed
-
-        // NOTE: Inactivity timer reset is handled in main.js after saveSettings completes
+        applyDarkMode(settings.darkModeEnabled);
+        updateTimerDisplayAndProgress();
 
     } catch (e) {
-        // Log the specific error that occurred during saving
         console.error("Save settings failed:", e);
-        // Show a user-friendly notification
         showNotification("Error saving settings. See console for details.", "error");
     }
 }
@@ -188,9 +163,8 @@ function loadSettings() {
         if (storedSettings) {
             const loaded = JSON.parse(storedSettings);
             settings = {
-                ...settings, // Start with defaults
-                ...loaded,   // Overwrite with loaded
-                // Ensure boolean/array/number types and defaults for potentially missing keys
+                ...settings,
+                ...loaded,
                 soundEnabled: loaded.soundEnabled === undefined ? true : loaded.soundEnabled,
                 showElapsedTime: loaded.showElapsedTime === undefined ? false : loaded.showElapsedTime,
                 celebrationGifUrls: Array.isArray(loaded.celebrationGifUrls) ? loaded.celebrationGifUrls : [],
@@ -201,12 +175,8 @@ function loadSettings() {
     } catch (e) {
         console.error("Load settings failed:", e);
         showNotification("Error loading settings.", "error");
-        // Keep default settings on error
     }
-
-    // Apply loaded theme immediately
     applyDarkMode(settings.darkModeEnabled);
-    // Other UI updates based on settings happen in initialize or openModal
 }
 
 // --- Log Storage ---
@@ -218,55 +188,33 @@ function loadLogs() {
     try {
         const storedLogs = localStorage.getItem(LS_LOG_KEY);
         logEntries = storedLogs ? JSON.parse(storedLogs) : {};
-
-        let logsUpdated = false; // Flag to check if migration occurred
-
+        let logsUpdated = false;
         Object.keys(logEntries).forEach(dateStr => {
             if (!Array.isArray(logEntries[dateStr])) {
-                console.warn(`Invalid log entry for date ${dateStr}, removing.`);
-                delete logEntries[dateStr];
-                logsUpdated = true;
-                return;
+                delete logEntries[dateStr]; logsUpdated = true; return;
             }
             logEntries[dateStr].forEach((entry, index) => {
-                // Basic validation of entry structure
                 if (!entry || typeof entry !== 'object' || !entry.timestamp || !entry.duration) {
-                     console.warn(`Invalid log entry found at ${dateStr}[${index}], removing.`, entry);
-                     // Safe removal while iterating backwards or creating new array is better,
-                     // but splice might be okay if careful or if this is rare.
-                     // For simplicity here, we'll assume it's okay for now.
-                     logEntries[dateStr].splice(index, 1);
-                     logsUpdated = true;
-                     return; // Skip further processing of this invalid entry
+                     logEntries[dateStr].splice(index, 1); logsUpdated = true; return;
                 }
-
-                // Migration checks
                 if (entry.startTime === undefined) {
-                    entry.startTime = entry.timestamp - (entry.duration * 60 * 1000);
-                    logsUpdated = true;
+                    entry.startTime = entry.timestamp - (entry.duration * 60 * 1000); logsUpdated = true;
                 }
                 if (entry.logId === undefined) {
-                    entry.logId = generateUniqueId('log');
-                    logsUpdated = true;
+                    entry.logId = generateUniqueId('log'); logsUpdated = true;
                 }
                 if (entry.projectId === undefined) {
-                    // Try to find matching task by text, otherwise default to Inbox
                      const matchingTask = tasks.find(t => t.text === entry.taskText);
                      entry.projectId = matchingTask ? matchingTask.projectId : DEFAULT_PROJECT_ID;
                     logsUpdated = true;
                 }
             });
-            // Sort entries after potential modifications
             logEntries[dateStr].sort((a, b) => (a.startTime || 0) - (b.startTime || 0));
         });
-
-        if (logsUpdated) {
-            console.log("Log entries migrated/updated. Saving changes.");
-            saveLogs();
-        }
+        if (logsUpdated) { saveLogs(); }
     } catch (e) {
         console.error("Failed to load logs from local storage:", e);
-        logEntries = {}; // Reset on error
+        logEntries = {};
         showNotification("Error loading log entries.", "error");
     }
 }
@@ -284,8 +232,7 @@ function saveLogs() {
 }
 
 
-// *** NEW: Reminder Storage ***
-
+// --- Reminder Storage ---
 /**
  * Saves the current reminders array to local storage.
  */
@@ -307,28 +254,97 @@ function loadReminders() {
         const storedReminders = localStorage.getItem(LS_REMINDERS_KEY);
         if (storedReminders) {
             const loaded = JSON.parse(storedReminders);
-            // Validate each reminder object
             reminders = loaded.filter(r =>
                 r && typeof r === 'object' && r.id && r.text && typeof r.time === 'number'
             ).map(r => ({
                 ...r,
-                triggered: r.triggered || false // Ensure triggered property exists
+                triggered: r.triggered || false
             }));
         } else {
-            reminders = []; // Initialize if nothing is stored
+            reminders = [];
         }
     } catch (e) {
         console.error("Load reminders failed:", e);
-        reminders = []; // Reset on error
+        reminders = [];
         showNotification("Error loading reminders.", "error");
     }
-    // Remove past, triggered reminders on load (optional cleanup)
     const now = Date.now();
     const initialLength = reminders.length;
     reminders = reminders.filter(r => r.time >= now || !r.triggered);
     if (reminders.length < initialLength) {
-        console.log("Cleaned up past/triggered reminders on load.");
-        saveReminders(); // Save cleanup
+        saveReminders();
     }
 }
-// *** END NEW ***
+
+// --- NEW: Widget Storage ---
+/**
+ * Saves the current widgets array to local storage.
+ */
+function saveWidgets() {
+    try {
+        // Before saving, clear any running interval IDs from the state
+        // to avoid saving non-serializable interval references.
+        const widgetsToSave = widgets.map(widget => {
+            if (widget.type === 'countdown') {
+                // Return a copy without the intervalId if it exists
+                const { intervalId, ...restOfState } = widget.state;
+                return { ...widget, state: restOfState };
+            }
+            return widget; // Return other widget types as is
+        });
+        localStorage.setItem(LS_WIDGETS_KEY, JSON.stringify(widgetsToSave));
+    } catch (e) {
+        console.error("Save widgets failed:", e);
+        showNotification("Error saving widgets.", "error");
+    }
+}
+
+/**
+ * Loads widgets from local storage into the widgets array.
+ * Performs basic validation and ensures default state properties exist.
+ */
+function loadWidgets() {
+    try {
+        const storedWidgets = localStorage.getItem(LS_WIDGETS_KEY);
+        if (storedWidgets) {
+            const loaded = JSON.parse(storedWidgets);
+            // Validate each widget object
+            widgets = loaded.filter(w =>
+                w && typeof w === 'object' && w.id && w.type && w.title && w.state
+            ).map(w => {
+                // Ensure default state properties based on type
+                if (w.type === 'counter') {
+                    return {
+                        ...w,
+                        state: {
+                            value: w.state.value || 0 // Default counter value
+                        }
+                    };
+                } else if (w.type === 'countdown') {
+                    // Reset running state and interval on load
+                    return {
+                        ...w,
+                        state: {
+                            timeRemaining: w.state.timeRemaining || 0,
+                            totalSeconds: w.state.totalSeconds || 0,
+                            isRunning: false // Always start paused on load
+                            // intervalId is not loaded/saved
+                        }
+                    };
+                }
+                // Filter out unknown types (or handle them if needed)
+                return null;
+            }).filter(w => w !== null); // Remove null entries from filtered map
+        } else {
+            widgets = []; // Initialize if nothing is stored
+        }
+    } catch (e) {
+        console.error("Load widgets failed:", e);
+        widgets = []; // Reset on error
+        showNotification("Error loading widgets.", "error");
+    }
+    // Note: Countdown timers are not automatically restarted on load.
+    // User needs to manually start them again.
+}
+// --- End Widget Storage ---
+

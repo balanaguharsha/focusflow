@@ -51,5 +51,14 @@ const NLP_DEBOUNCE_DELAY = 500; // Milliseconds to wait after typing stops befor
 let appliedNlpSuggestionIndex = {
     manual: -1,
     inactivity: -1,
-    reminder: -1 // *** ADD THIS LINE ***
+    reminder: -1
 };
+
+// --- Widget State ---
+// Array to hold all widget objects
+// Each object: { id: string, type: 'counter' | 'countdown', title: string, state: object }
+let widgets = [];
+
+// State for active countdown timers (key: widgetId, value: intervalId)
+let activeCountdownIntervals = {};
+

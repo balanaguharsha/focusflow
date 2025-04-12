@@ -1,7 +1,7 @@
 // js/importExport.js
 
 /**
- * Exports all application data (tasks, projects, logs, settings, reminders) as a JSON file.
+ * Exports all application data (tasks, projects, logs, settings, reminders, widgets) as a JSON file.
  */
 function exportData() {
     try {
@@ -11,7 +11,8 @@ function exportData() {
             projects: projects,
             logEntries: logEntries,
             settings: settings,
-            reminders: reminders // *** ADDED reminders ***
+            reminders: reminders,
+            widgets: widgets // *** ADDED widgets ***
         };
 
         // Convert the data to a formatted JSON string
@@ -80,19 +81,27 @@ function handleImportFile(event) {
             const importedData = JSON.parse(e.target.result);
 
             // Basic validation of the imported data structure
-            // *** UPDATED validation to include reminders ***
+            // *** UPDATED validation to include widgets ***
             if (!importedData || typeof importedData !== 'object' ||
                 !importedData.hasOwnProperty('tasks') ||
                 !importedData.hasOwnProperty('projects') ||
                 !importedData.hasOwnProperty('logEntries') ||
                 !importedData.hasOwnProperty('settings') ||
-                !importedData.hasOwnProperty('reminders')) { // Check for reminders key
-                throw new Error("Invalid backup file format. Missing required data sections.");
+                !importedData.hasOwnProperty('reminders') ||
+                !importedData.hasOwnProperty('widgets')) { // Check for widgets key
+                throw new Error("Invalid backup file format. Missing required data sections (tasks, projects, logEntries, settings, reminders, widgets).");
             }
+
+            // ** ADDED: More detailed validation for widgets **
+            if (!Array.isArray(importedData.widgets)) {
+                 throw new Error("Invalid backup file format. 'widgets' section must be an array.");
+            }
+            // Optional: Validate individual widget structures within the array if needed
+
 
             // Show confirmation modal before overwriting data
             showConfirmationModal(
-                `Import data from "${file.name}"?\n\n⚠️ WARNING: This will OVERWRITE all current tasks, projects, logs, settings, and reminders!`,
+                `Import data from "${file.name}"?\n\n⚠️ WARNING: This will OVERWRITE all current tasks, projects, logs, settings, reminders, and widgets!`,
                 () => {
                     // --- This code runs only if the user confirms ---
                     try {
@@ -100,7 +109,8 @@ function handleImportFile(event) {
                         tasks = importedData.tasks || [];
                         projects = importedData.projects || [];
                         logEntries = importedData.logEntries || {};
-                        reminders = importedData.reminders || []; // *** ADDED reminders import ***
+                        reminders = importedData.reminders || [];
+                        widgets = importedData.widgets || []; // *** ADDED widgets import ***
                         // Merge settings carefully, keeping existing defaults if new ones are missing
                         settings = { ...settings, ...(importedData.settings || {}) };
 
@@ -108,7 +118,8 @@ function handleImportFile(event) {
                         saveTasks();
                         saveProjects();
                         saveLogs();
-                        saveReminders(); // *** ADDED saveReminders call ***
+                        saveReminders();
+                        saveWidgets(); // *** ADDED saveWidgets call ***
                         saveSettings(); // This also applies theme etc.
 
                         showNotification('Import successful! Reloading application...', 'success', 4000);
@@ -125,7 +136,7 @@ function handleImportFile(event) {
             );
         } catch (parseError) {
             console.error("Import failed - parsing error:", parseError);
-            showNotification('Import failed. Could not read backup file. Ensure it is valid JSON.', 'error');
+            showNotification(`Import failed. ${parseError.message}`, 'error');
         } finally {
             // Reset file input value regardless of success/failure
             event.target.value = null;
