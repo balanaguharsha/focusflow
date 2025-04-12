@@ -62,3 +62,7 @@ let widgets = [];
 // State for active countdown timers (key: widgetId, value: intervalId)
 let activeCountdownIntervals = {};
 
+// js/state.js
+// ... other state variables
+const MAX_UNDO_HISTORY = 10; // Maximum number of completions to remember
+let recentlyCompletedTaskIds = []; // Array to store IDs of recently completed tasks (acting as a stack)

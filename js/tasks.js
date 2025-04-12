@@ -79,13 +79,25 @@ function handleProjectAddTask(projectId, inputElement) {
  */
 function toggleTaskComplete(taskId) {
     const taskIndex = tasks.findIndex(t => t.id === taskId);
-    if (taskIndex === -1) return; // Task not found
+    if (taskIndex === -1) return;
 
     const task = tasks[taskIndex];
-    task.completed = !task.completed; // Toggle status
+    const wasCompleted = task.completed; // Check status *before* toggling
+
+    task.completed = !task.completed;
     const isNowCompleted = task.completed;
     let shouldResetTimer = false;
 
+    // --- Add to Undo History only when marking as complete ---
+    if (isNowCompleted && !wasCompleted) { // Task went from incomplete to complete
+        // Add the ID to the end of our history array
+        recentlyCompletedTaskIds.push(taskId);
+        // If the history is too long, remove the oldest item (from the beginning)
+        if (recentlyCompletedTaskIds.length > MAX_UNDO_HISTORY) {
+            recentlyCompletedTaskIds.shift(); // Remove the first element
+        }
+        console.log("Undo History:", recentlyCompletedTaskIds); // Optional: for debugging
+    }
     // If the *active* task is marked complete
     if (isNowCompleted && taskId === activeTaskIndex) {
         // Check if there's a focus start time recorded
@@ -185,6 +197,35 @@ function toggleTaskComplete(taskId) {
                  celebrationGif.src = ''; // Clear src to stop animation/loading
              }, CELEBRATION_DURATION);
          }
+    }
+}
+
+
+/**
+ * Undoes the most recent task completion action recorded in the history.
+ */
+function undoLastTaskCompletion() {
+    // Check if the history array has any IDs
+    if (recentlyCompletedTaskIds.length > 0) {
+        // Get the most recently added ID (last element) and remove it
+        const taskToUndoId = recentlyCompletedTaskIds.pop();
+        console.log("Popped from Undo History:", taskToUndoId, "Remaining:", recentlyCompletedTaskIds); // Optional: for debugging
+
+        const taskExists = tasks.some(t => t.id === taskToUndoId);
+
+        if (taskExists) {
+            console.log("Undoing completion for task:", taskToUndoId); // Optional: for debugging
+            // Calling toggleTaskComplete will mark it incomplete and save/render.
+            // It will *not* re-add it to the undo history because of the logic check inside toggleTaskComplete.
+            toggleTaskComplete(taskToUndoId);
+            showNotification("Last task completion undone.", "info");
+        } else {
+            // Task might have been deleted since completion
+            showNotification("Could not find the task to undo (it may have been deleted).", "warning");
+            // The ID was already popped, so the history is corrected.
+        }
+    } else {
+        showNotification("No task completions left to undo.", "info");
     }
 }
 

@@ -28,6 +28,7 @@ function setupEventListeners() {
     if (addTaskButton) addTaskButton.addEventListener('click', addTask);
     if (newTaskInput) {
         newTaskInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addTask(); });
+        // *** Connect prediction listener ***
         newTaskInput.addEventListener('input', () => handleTaskInputForPrediction(newTaskInput, newTaskProjectSelect, 'new-task-quick-projects'));
     }
     if (newTaskProjectSelect) newTaskProjectSelect.addEventListener('change', (e) => {
@@ -39,23 +40,44 @@ function setupEventListeners() {
      if (addReminderButton) addReminderButton.addEventListener('click', addReminder);
      if (reminderTextInput) {
           reminderTextInput.addEventListener('input', (event) => {
+              // NLP handling logic (as provided in original file)
               clearTimeout(nlpSuggestionDebounceTimer);
-              appliedNlpSuggestionIndex.reminder = -1;
-               const currentText = event.target.value;
-               if (currentText.length < 3) {
-                    if (typeof renderTimeSuggestions === 'function') { renderTimeSuggestions([], 'reminder', -1); }
-                    currentNlpSuggestions = []; return;
-               } else {
-                    if (typeof renderTimeSuggestions === 'function') { renderTimeSuggestions(currentNlpSuggestions, 'reminder', -1); }
-               }
+              appliedNlpSuggestionIndex.reminder = -1; // Reset applied state for reminder on new input
+              const currentText = event.target.value;
+              // Only re-render suggestions if text is long enough
+              if (currentText.length < 3) {
+                  // Clear suggestions if text is too short
+                  if (typeof renderTimeSuggestions === 'function') { renderTimeSuggestions([], 'reminder', -1); }
+                  currentNlpSuggestions = []; // Clear state
+                  return;
+              } else {
+                  // Re-render existing suggestions without highlight while typing
+                  if (typeof renderTimeSuggestions === 'function') {
+                      renderTimeSuggestions(currentNlpSuggestions, 'reminder', -1); // Re-render without applied index while typing
+                  }
+              }
+              // Debounce NLP parsing
               nlpSuggestionDebounceTimer = setTimeout(() => {
                   const textToParse = reminderTextInput.value;
                   if (textToParse.length >= 3 && typeof parseTimeInput === 'function' && typeof applyNlpSuggestionUI === 'function') {
                       const now = new Date();
-                      currentNlpSuggestions = parseTimeInput(textToParse, now);
-                      if (currentNlpSuggestions.length > 0) { applyNlpSuggestionUI(0, 'reminder'); }
-                      else { appliedNlpSuggestionIndex.reminder = -1; if (typeof renderTimeSuggestions === 'function') { renderTimeSuggestions([], 'reminder', -1); } }
-                  } else { currentNlpSuggestions = []; appliedNlpSuggestionIndex.reminder = -1; if (typeof renderTimeSuggestions === 'function') { renderTimeSuggestions([], 'reminder', -1); } }
+                      currentNlpSuggestions = parseTimeInput(textToParse, now); // Generate new suggestions
+                      // Auto-apply the first suggestion if available
+                      if (currentNlpSuggestions.length > 0) {
+                          applyNlpSuggestionUI(0, 'reminder'); // Apply the first suggestion
+                      } else {
+                          // No suggestions found, clear the list and applied state
+                          appliedNlpSuggestionIndex.reminder = -1;
+                          if (typeof renderTimeSuggestions === 'function') {
+                              renderTimeSuggestions([], 'reminder', -1);
+                          }
+                      }
+                  } else {
+                      // Clear state and display if text too short or functions missing
+                      currentNlpSuggestions = [];
+                      appliedNlpSuggestionIndex.reminder = -1;
+                      if (typeof renderTimeSuggestions === 'function') { renderTimeSuggestions([], 'reminder', -1); }
+                  }
               }, NLP_DEBOUNCE_DELAY);
           });
           reminderTextInput.addEventListener('keydown', (e) => {
@@ -94,7 +116,9 @@ function setupEventListeners() {
     if (manualLogForm) manualLogForm.addEventListener('submit', handleManualLogSubmit);
     if (manualLogTaskInput) {
         manualLogTaskInput.addEventListener('input', (event) => {
+             // NLP Listener
              if (typeof handleNlpTaskInput === 'function') { handleNlpTaskInput(event, 'manual'); } else { console.error("handleNlpTaskInput function not found."); }
+             // Project Prediction Listener
              handleTaskInputForPrediction(manualLogTaskInput, manualLogProjectSelect, 'manual-log-quick-projects');
          });
     }
@@ -130,7 +154,8 @@ function setupEventListeners() {
     if (editLogModal) window.addEventListener('click', (event) => { if (event.target === editLogModal) closeEditLogModal(); });
     if (editLogTaskInput && editLogProjectSelect) {
         editLogTaskInput.addEventListener('input', () => {
-            if (typeof handleTaskInputForPrediction === 'function') { handleTaskInputForPrediction(editLogTaskInput, editLogProjectSelect, null); }
+            // *** Connect prediction listener ***
+            if (typeof handleTaskInputForPrediction === 'function') { handleTaskInputForPrediction(editLogTaskInput, editLogProjectSelect, null); } // No quick projects for edit log
             else { console.error("handleTaskInputForPrediction function not found!"); }
         });
     } else { console.warn("Edit log task input or project select not found for adding prediction listener."); }
@@ -174,8 +199,13 @@ function setupEventListeners() {
             if (e.key === 'Enter') { e.preventDefault(); handleShortcutAddTaskSubmit(); }
             else if (e.key === 'Escape') { closeShortcutAddTaskModal(); }
         });
+        // *** Connect prediction listener ***
         shortcutTaskInput.addEventListener('input', handleShortcutInputTyping);
     }
+     // Connect the actual Add button in the shortcut modal
+     if (shortcutAddTaskButton) { // Ensure button exists
+          shortcutAddTaskButton.addEventListener('click', handleShortcutAddTaskSubmit);
+     }
 
     // Global Keyboard Shortcut Listener
     window.addEventListener('keydown', handleGlobalShortcut);
@@ -264,16 +294,191 @@ function generateAndRenderAggregatedSummary() {
 }
 
 // --- Project Prediction & Shortcut Logic ---
-/** Handles user input in task fields to predict and update the project selection. */
-function handleTaskInputForPrediction(taskInputElement, projectSelectElement, quickProjectContainerId) { /* ... (keep existing code) ... */ }
-/** Handles the global keyboard shortcut (Cmd/Ctrl+Shift+H/S). */
-function handleGlobalShortcut(event) { /* ... (keep existing code) ... */ }
-/** Finds the best matching project ID for a given task description text. */
-function findBestMatchingProject(inputText) { /* ... (keep existing code) ... */ }
-/** Handles the submission of the shortcut add task modal (via Enter key). */
-function handleShortcutAddTaskSubmit() { /* ... (keep existing code) ... */ }
-/** Handles the input event in the shortcut modal to show predicted project. */
-function handleShortcutInputTyping() { /* ... (keep existing code) ... */ }
+
+/**
+ * Handles user input in task fields to predict and update the project selection.
+ * @param {HTMLInputElement} taskInputElement - The input element for the task description.
+ * @param {HTMLSelectElement} projectSelectElement - The project select dropdown element.
+ * @param {string|null} quickProjectContainerId - The ID of the container for quick project buttons (or null if none).
+ */
+function handleTaskInputForPrediction(taskInputElement, projectSelectElement, quickProjectContainerId) {
+    const inputText = taskInputElement.value;
+    if (!inputText.trim()) return; // Don't predict on empty input
+
+    const predictedProjectId = findBestMatchingProject(inputText);
+
+    if (predictedProjectId && projectSelectElement.value !== predictedProjectId) {
+        projectSelectElement.value = predictedProjectId;
+        // Optionally trigger change event if other logic depends on it
+        // projectSelectElement.dispatchEvent(new Event('change'));
+
+        // Update quick select buttons visually if they exist
+        if (quickProjectContainerId) {
+            updateQuickSelectActiveState(quickProjectContainerId, projectSelectElement.id);
+        }
+         // Update last used timestamp for the predicted project
+         updateProjectLastUsed(predictedProjectId);
+    }
+}
+
+/**
+ * Finds the best matching project ID for a given task description text.
+ * Uses simple keyword matching and Levenshtein distance.
+ * @param {string} inputText - The task description text.
+ * @returns {string|null} - The ID of the best matching project, or null if no good match.
+ */
+function findBestMatchingProject(inputText) {
+    if (!inputText || !projects || projects.length <= 1) return DEFAULT_PROJECT_ID; // Default to Inbox if no input or only Inbox exists
+
+    const textLower = inputText.toLowerCase().trim();
+    let bestMatch = { projectId: null, score: -1 }; // Score: higher is better
+
+    projects.forEach(project => {
+        if (project.id === DEFAULT_PROJECT_ID) return; // Skip Inbox for matching
+
+        const projectNameLower = project.name.toLowerCase();
+        let currentScore = 0;
+
+        // 1. Direct keyword match (higher score)
+        if (textLower.includes(projectNameLower)) {
+            // Score based on length of match (longer project names get higher score for containment)
+            currentScore += 10 + projectNameLower.length;
+        }
+
+        // 2. Levenshtein distance (lower distance = higher score)
+        // Only calculate if direct match score is low or non-existent
+        if (currentScore < 10) { // Threshold to prefer direct matches
+             if (typeof levenshteinDistance === 'function') {
+                const distance = levenshteinDistance(textLower.substring(0, 20), projectNameLower); // Compare beginning of task text
+                const maxPossibleDistance = Math.max(textLower.substring(0, 20).length, projectNameLower.length);
+                if (maxPossibleDistance > 0) {
+                    const similarity = 1 - (distance / maxPossibleDistance); // Normalize distance to similarity (0-1)
+                    // Give Levenshtein less weight than direct match
+                    currentScore += Math.max(0, similarity * 5); // Scale similarity score
+                }
+             } else {
+                 console.warn("levenshteinDistance function not found for project prediction.");
+             }
+        }
+
+
+        // 3. Bonus for Recently Used (minor score increase)
+        if (project.lastUsed && project.lastUsed > 0) {
+             // Give a very small bonus, decays over time? For simplicity, just a flat bonus for now.
+             currentScore += 0.5;
+        }
+
+        // Update best match if current project has a higher score
+        if (currentScore > bestMatch.score) {
+            bestMatch = { projectId: project.id, score: currentScore };
+        }
+    });
+
+    // Return the best match ID if score is above a minimum threshold, otherwise default
+    const MIN_SCORE_THRESHOLD = 3; // Adjust this threshold based on testing
+    return (bestMatch.score >= MIN_SCORE_THRESHOLD) ? bestMatch.projectId : DEFAULT_PROJECT_ID;
+}
+
+/**
+ * Handles the submission of the shortcut add task modal (via Enter key or button click).
+ */
+function handleShortcutAddTaskSubmit() {
+    const text = shortcutTaskInput ? shortcutTaskInput.value : '';
+    if (!text.trim()) {
+        showNotification("Task description cannot be empty.", "warning");
+        return;
+    }
+
+    // Find the best project (or use default)
+    const predictedProjectId = findBestMatchingProject(text) || DEFAULT_PROJECT_ID;
+
+    // Create the task using the core function
+    if (typeof createAndAddTask === 'function') {
+        if (createAndAddTask(text, predictedProjectId)) {
+            // Success
+            closeShortcutAddTaskModal(); // Close modal on success
+        } else {
+            // Failure (e.g., empty text after trimming), notification shown by createAndAddTask
+        }
+    } else {
+        console.error("createAndAddTask function not found!");
+        showNotification("Error adding task.", "error");
+    }
+}
+
+/**
+ * Handles the input event in the shortcut modal to show predicted project.
+ */
+function handleShortcutInputTyping() {
+    if (!shortcutTaskInput || !shortcutPredictedProject) return;
+
+    const text = shortcutTaskInput.value;
+    if (!text.trim()) {
+        shortcutPredictedProject.textContent = ''; // Clear prediction if input is empty
+        return;
+    }
+
+    const predictedProjectId = findBestMatchingProject(text);
+    const predictedProject = projects.find(p => p.id === predictedProjectId);
+
+    if (predictedProject && predictedProjectId !== DEFAULT_PROJECT_ID) {
+        shortcutPredictedProject.textContent = `Project: ${predictedProject.name}`;
+        shortcutPredictedProject.style.color = predictedProject.color || DEFAULT_PROJECT_COLOR;
+    } else {
+        shortcutPredictedProject.textContent = 'Project: Inbox'; // Show Inbox if default
+        shortcutPredictedProject.style.color = DEFAULT_PROJECT_COLOR;
+    }
+}
+
+
+/** Handles the global keyboard shortcut (Cmd/Ctrl+Shift+H/S and Cmd/Ctrl+Shift+Z). */
+function handleGlobalShortcut(event) {
+    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+    const modifierKey = isMac ? event.metaKey : event.ctrlKey;
+
+    // --- Helper to check if focus is in an input ---
+    const isInputFocused = () => {
+         const activeElement = document.activeElement;
+         return activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.isContentEditable);
+    };
+
+    // --- Shortcut Add Task (Cmd/Ctrl+Shift+H or S) ---
+    if (modifierKey && event.shiftKey && (event.key === 'h' || event.key === 'H' || event.key === 's' || event.key === 'S')) {
+        event.preventDefault();
+        if (typeof openShortcutAddTaskModal === 'function') {
+             openShortcutAddTaskModal();
+        } else { console.error("openShortcutAddTaskModal function not found!"); }
+        return; // Exit after handling
+    }
+
+    // --- Undo Last Task Completion (Cmd/Ctrl+Shift+Z) ---
+    if (modifierKey && event.shiftKey && (event.key === 'z' || event.key === 'Z')) {
+         // Check if focus is inside an input field to prevent accidental undo while typing
+         if (!isInputFocused()) {
+              event.preventDefault();
+              console.log("Undo shortcut detected"); // Optional: for debugging
+              if (typeof undoLastTaskCompletion === 'function') {
+                   undoLastTaskCompletion();
+              } else {
+                   console.error("undoLastTaskCompletion function not found!");
+                   showNotification("Undo function unavailable.", "error");
+              }
+         }
+         return; // Exit after handling
+    }
+
+    // --- Example: Start/Pause Timer (Spacebar, but only if not typing) ---
+    // Note: This can be finicky. Consider if it's truly desired.
+    // if (event.code === 'Space' && !isInputFocused()) {
+    //     event.preventDefault(); // Prevent scrolling
+    //     if (typeof handleStartPauseClick === 'function') {
+    //         handleStartPauseClick();
+    //     }
+    //     return;
+    // }
+
+    // Add other global shortcuts here if needed
+}
 
 
 // --- Widget Functions ---
@@ -506,7 +711,9 @@ function startCustomCountdown(widgetId, widgetCardElement) {
         }
 
         if (currentWidget.state.timeRemaining <= 0) {
-            pauseCustomCountdown(widgetId, currentCard); // Stop timer visually
+            // Find the card element again inside the interval callback just in case
+            const finalCard = document.querySelector(`.widget-card[data-widget-id="${widgetId}"]`);
+            pauseCustomCountdown(widgetId, finalCard); // Stop timer visually
             showNotification(`Countdown "${currentWidget.title}" finished!`, "success");
             playNotificationSound(); // Play sound
             // Optionally trigger reminder here if that feature is re-added
@@ -532,7 +739,7 @@ function pauseCustomCountdown(widgetId, widgetCardElement) {
     clearInterval(activeCountdownIntervals[widgetId]);
     delete activeCountdownIntervals[widgetId]; // Remove interval ID reference
 
-    updateCustomCountdownDisplay(widgetId, widgetCardElement); // Update UI
+    if(widgetCardElement) { updateCustomCountdownDisplay(widgetId, widgetCardElement); } // Update UI if element provided
     saveWidgets(); // Save paused state
 }
 
@@ -558,13 +765,11 @@ function resetCustomCountdown(widgetId, widgetCardElement) {
     widget.state.timeRemaining = 0;
     widget.state.totalSeconds = 0; // Or reset based on input? Let's clear total too.
 
-    // Reset input field value
-    const durationInput = widgetCardElement?.querySelector('[data-role="duration-input"]');
-    // if (durationInput) durationInput.value = '5'; // Optionally reset to default
+    // Reset input field value (optional - could leave it as last used duration)
+    // const durationInput = widgetCardElement?.querySelector('[data-role="duration-input"]');
+    // if (durationInput) durationInput.value = ''; // Clear input
 
-    updateCustomCountdownDisplay(widgetId, widgetCardElement); // Update display
+    if(widgetCardElement) { updateCustomCountdownDisplay(widgetId, widgetCardElement); } // Update display if element provided
     saveWidgets(); // Save reset state
 }
-
-
 // --- End Widget Functions ---
