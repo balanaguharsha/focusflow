@@ -1101,4 +1101,301 @@ html.dark #reminder-time-suggestions {
    width: 100%; /* Ensure buttons take full width inside */
 }
 
-/* --- End Fix --- */
+.memory-game-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); /* Example: 4 columns */
+    gap: 0.5rem; /* Adjust spacing between cards */
+    margin-bottom: 0.75rem; /* Space below grid */
+    perspective: 1000px; /* For 3D flip effect */
+}
+
+.memory-card {
+    aspect-ratio: 1 / 1; /* Make cards square */
+    background-color: #93c5fd; /* bg-blue-300 */
+    border-radius: 0.25rem; /* rounded */
+    cursor: pointer;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.6s;
+    border: 1px solid #60a5fa; /* border-blue-400 */
+}
+html.dark .memory-card {
+    background-color: #3b82f6; /* dark:bg-blue-500 */
+    border-color: #2563eb; /* dark:border-blue-600 */
+}
+
+.memory-card.is-flipped {
+    transform: rotateY(180deg);
+}
+.memory-card.is-matched {
+    cursor: default;
+    opacity: 0.6;
+    background-color: #a7f3d0; /* bg-green-200 */
+    border-color: #6ee7b7; /* border-green-300 */
+}
+html.dark .memory-card.is-matched {
+    background-color: #059669; /* dark:bg-green-600 */
+    border-color: #047857; /* dark:border-green-700 */
+}
+
+
+.memory-card-face {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden; /* Hide the back side when facing away */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem; /* Adjust icon size */
+    border-radius: 0.25rem;
+}
+
+.memory-card-front { /* Default hidden face */
+    background-color: #e0f2fe; /* bg-sky-100 */
+    color: #0ea5e9; /* text-sky-500 */
+    transform: rotateY(180deg); /* Start flipped */
+    border: 1px solid #7dd3fc; /* border-sky-200 */
+}
+html.dark .memory-card-front {
+    background-color: #0c4a6e; /* dark:bg-sky-900 */
+    color: #7dd3fc; /* dark:text-sky-300 */
+    border-color: #0369a1; /* dark:border-sky-700 */
+}
+
+
+.memory-card-back { /* Default visible face */
+    /* Styles inherited from .memory-card mostly */
+    /* Add specific styles if needed */
+    background-color: #93c5fd; /* bg-blue-300 */
+}
+html.dark .memory-card-back {
+    background-color: #3b82f6; /* dark:bg-blue-500 */
+}
+
+
+.memory-game-info {
+    font-size: 0.875rem; /* text-sm */
+    text-align: center;
+    margin-bottom: 0.5rem;
+    color: #4b5563; /* text-gray-600 */
+}
+html.dark .memory-game-info {
+    color: #9ca3af; /* dark:text-gray-400 */
+}
+
+/* Reflex Game Widget */
+.reflex-game-area {
+    height: 150px; /* Adjust height as needed */
+    background-color: #f3f4f6; /* bg-gray-100 */
+    border-radius: 0.375rem; /* rounded-md */
+    position: relative; /* For positioning the target */
+    overflow: hidden; /* Hide target if it goes outside */
+    cursor: crosshair;
+    margin-bottom: 0.75rem;
+    border: 1px solid #e5e7eb; /* border-gray-200 */
+}
+html.dark .reflex-game-area {
+    background-color: #374151; /* dark:bg-gray-700 */
+    border-color: #4b5563; /* dark:border-gray-600 */
+}
+
+.reflex-target {
+    width: 40px;
+    height: 40px;
+    background-color: #ef4444; /* bg-red-500 */
+    border-radius: 50%; /* Make it a circle */
+    position: absolute;
+    cursor: pointer;
+    display: none; /* Hidden by default */
+    transition: background-color 0.1s ease;
+    border: 2px solid #dc2626; /* border-red-600 */
+}
+html.dark .reflex-target {
+    background-color: #f87171; /* dark:bg-red-400 */
+    border-color: #ef4444; /* dark:border-red-500 */
+}
+
+.reflex-target.hit { /* Optional: visual feedback on hit */
+    background-color: #22c55e; /* bg-green-500 */
+    border-color: #16a34a; /* border-green-600 */
+    transform: scale(0.9);
+}
+html.dark .reflex-target.hit {
+     background-color: #4ade80; /* dark:bg-green-400 */
+     border-color: #22c55e; /* dark:border-green-500 */
+}
+
+.reflex-game-info {
+    font-size: 0.875rem; /* text-sm */
+    text-align: center;
+    margin-bottom: 0.5rem;
+    color: #4b5563; /* text-gray-600 */
+}
+html.dark .reflex-game-info {
+    color: #9ca3af; /* dark:text-gray-400 */
+}
+.reflex-game-info strong {
+    color: #1f2937; /* text-gray-800 */
+}
+html.dark .reflex-game-info strong {
+    color: #e5e7eb; /* dark:text-gray-200 */
+}
+
+/* Shared Game Widget Button Styles */
+.game-widget-button {
+    background-color: #4f46e5; /* bg-indigo-600 */
+    color: white;
+    font-size: 0.875rem; /* text-sm */
+    font-weight: 500; /* font-medium */
+    padding: 0.3rem 0.8rem;
+    border-radius: 0.375rem; /* rounded-md */
+    transition: background-color 0.2s ease;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
+}
+.game-widget-button:hover {
+    background-color: #4338ca; /* hover:bg-indigo-700 */
+}
+.game-widget-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+html.dark .game-widget-button {
+     background-color: #6366f1; /* dark:bg-indigo-500 */
+}
+html.dark .game-widget-button:hover {
+     background-color: #4f46e5; /* dark:hover:bg-indigo-600 */
+}
+/* --- Enhanced Reminder View Styles --- */
+
+/* Input Area Adjustments (if needed based on HTML changes) */
+#view-reminders .space-y-3 > div { /* Target direct children of the form area */
+    margin-bottom: 0.75rem; /* Add consistent bottom margin */
+}
+#view-reminders label {
+    margin-bottom: 0.25rem; /* Add space below labels */
+}
+
+/* Reminder List Grouping */
+.reminder-group-header {
+    font-size: 0.875rem; /* text-sm */
+    font-weight: 600; /* semibold */
+    color: #4b5563; /* text-gray-600 */
+    padding: 0.5rem 0.25rem 0.25rem; /* Adjust padding */
+    margin-top: 0.75rem; /* Add space above header */
+    border-bottom: 1px solid #e5e7eb; /* border-gray-200 */
+}
+.reminder-group-header:first-child {
+     margin-top: 0; /* No top margin for the very first group */
+}
+html.dark .reminder-group-header {
+    color: #9ca3af; /* dark:text-gray-400 */
+    border-bottom-color: #4b5563; /* dark:border-gray-600 */
+}
+
+/* Reminder Item adjustments */
+.reminder-item {
+    /* Existing styles are mostly fine */
+    /* Ensure enough space for new elements */
+    padding: 0.6rem 0.75rem; /* Slightly adjust padding */
+    align-items: flex-start; /* Align items top */
+}
+html.dark .reminder-item {
+    /* Ensure dark mode styles apply */
+    background-color: #1f2937;
+    border-color: #374151;
+}
+html.dark .reminder-item:hover {
+    background-color: #374151;
+}
+
+.reminder-details {
+    flex-grow: 1;
+    margin-right: 0.5rem;
+}
+
+.reminder-text {
+    /* Existing styles */
+    font-weight: 500;
+    margin-bottom: 0.1rem; /* Space below text */
+}
+html.dark .reminder-text { color: #e5e7eb; }
+
+
+.reminder-meta { /* Container for time, category, etc. */
+    display: flex;
+    flex-wrap: wrap; /* Allow wrapping on small screens */
+    gap: 0.5rem; /* Space between meta items */
+    align-items: center; /* <<<< Ensure this is present *** */
+    font-size: 0.75rem; /* text-xs */
+    color: #6b7280; /* text-gray-500 */
+    margin-top: 0.25rem; /* Add some space above meta */
+}
+html.dark .reminder-meta { color: #9ca3af; }
+
+.reminder-persistent-icon {
+    display: inline-flex; /* Treat as flex item for alignment */
+    align-items: center; /* Align its internal content (the icon) */
+    line-height: 1; /* Adjust line height to match others potentially */
+    /* Add other styling if needed, e.g., slightly larger font size */
+    /* font-size: 0.8rem; */
+}
+
+.reminder-time-display { /* For absolute time */
+     /* Existing styles */
+     font-size: 0.75rem; /* text-xs */
+}
+.reminder-relative-time { /* For relative time like 'in 2 hours' */
+    font-style: italic;
+}
+
+.reminder-category-tag {
+    display: inline-block;
+    padding: 0.1rem 0.4rem;
+    border-radius: 0.25rem;
+    background-color: #e5e7eb; /* bg-gray-200 */
+    color: #4b5563; /* text-gray-600 */
+    font-weight: 500;
+    border: 1px solid #d1d5db; /* border-gray-300 */
+}
+html.dark .reminder-category-tag {
+    background-color: #4b5563; /* dark:bg-gray-600 */
+    color: #d1d5db; /* dark:text-gray-300 */
+    border-color: #6b7280; /* dark:border-gray-500 */
+}
+/* Add styles for persistent icon if you add one */
+
+/* Reminder Actions (Edit/Delete) */
+.reminder-actions {
+    display: flex;
+    flex-direction: column; /* Stack buttons vertically */
+    gap: 0.25rem; /* Space between buttons */
+    flex-shrink: 0; /* Prevent shrinking */
+    opacity: 0; /* Hide initially */
+    transition: opacity 0.2s ease-in-out;
+}
+.reminder-item:hover .reminder-actions {
+    opacity: 1; /* Show on hover */
+}
+.reminder-edit-btn,
+.reminder-delete-btn {
+    padding: 0.15rem; /* Smaller padding for small buttons */
+    border-radius: 0.25rem;
+    transition: background-color 0.2s, color 0.2s;
+}
+.reminder-edit-btn { color: #4f46e5; /* text-indigo-600 */ }
+.reminder-edit-btn:hover { background-color: #e0e7ff; /* hover:bg-indigo-100 */ color: #4338ca; }
+html.dark .reminder-edit-btn { color: #a5b4fc; /* dark:text-indigo-400 */ }
+html.dark .reminder-edit-btn:hover { background-color: #3730a3; /* dark:hover:bg-indigo-900 */ color: #c7d2fe; }
+
+.reminder-delete-btn { color: #ef4444; /* text-red-500 */ }
+.reminder-delete-btn:hover { background-color: #fee2e2; /* hover:bg-red-100 */ color: #dc2626; }
+html.dark .reminder-delete-btn { color: #f87171; /* dark:text-red-400 */ }
+html.dark .reminder-delete-btn:hover { background-color: #450a0a; /* dark:hover:bg-red-900 */ color: #fca5a5; }
+
+/* Reminder Alert Modal Snooze Buttons */
+.reminder-snooze-btn {
+     /* Using Tailwind classes mostly, ensure consistency if needed */
+     /* Example: Add specific styling if Tailwind isn't enough */
+     /* border: 1px solid #d1d5db; */
+}

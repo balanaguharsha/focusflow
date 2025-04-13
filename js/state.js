@@ -38,31 +38,24 @@ let pomodoroStopTime = null; // Timestamp when the main timer was last stopped (
 let inactivityLogMode = 'tillNow'; // 'tillNow', '15', '30', '60', '120', 'custom' - Default mode
 
 // --- Reminder State ---
-let reminders = []; // Array of { id: string, text: string, time: number (timestamp), triggered: boolean }
+let reminders = []; // Array of { id: string, text: string, time: number (timestamp), triggered: boolean, category?: string, isPersistent?: boolean, recurrenceRule?: string }
 let activeReminderInterval = null; // Interval timer ID for checking reminders
 let activeReminderSound = null; // Holds the Tone.Loop object for the reminder sound
+// --- START ADDED Reminder State ---
+let editingReminderId = null; // Stores the ID of the reminder currently being edited, or null if adding new
+// --- END ADDED Reminder State ---
+
 
 // --- NLP Time Suggestion State ---
 let currentNlpSuggestions = []; // Holds the latest suggestions from the parser
 let nlpSuggestionDebounceTimer = null; // Timeout ID for debouncing NLP parsing
 const NLP_DEBOUNCE_DELAY = 500; // Milliseconds to wait after typing stops before parsing
-
-// Track applied suggestion index for each form type
-let appliedNlpSuggestionIndex = {
-    manual: -1,
-    inactivity: -1,
-    reminder: -1
-};
+let appliedNlpSuggestionIndex = { manual: -1, inactivity: -1, reminder: -1 };
 
 // --- Widget State ---
-// Array to hold all widget objects
-// Each object: { id: string, type: 'counter' | 'countdown', title: string, state: object }
 let widgets = [];
-
-// State for active countdown timers (key: widgetId, value: intervalId)
 let activeCountdownIntervals = {};
 
-// js/state.js
-// ... other state variables
-const MAX_UNDO_HISTORY = 10; // Maximum number of completions to remember
-let recentlyCompletedTaskIds = []; // Array to store IDs of recently completed tasks (acting as a stack)
+// --- Undo State ---
+const MAX_UNDO_HISTORY = 10;
+let recentlyCompletedTaskIds = []; // Array to store IDs of recently completed tasks

@@ -1,16 +1,34 @@
 // js/main.js
 
+// --- Game Constants ---
+const MEMORY_GAME_SYMBOLS = ['🍎', '🍌', '⭐', '💖', '🚀', '💡', '🍕', '🎉']; // 8 pairs for 4x4 grid
+const REFLEX_GAME_TARGET_DURATION = 1500; // How long the target stays visible (ms)
+const REFLEX_GAME_DELAY_MIN = 500; // Min delay before next target (ms)
+const REFLEX_GAME_DELAY_MAX = 2000; // Max delay before next target (ms)
+const REFLEX_GAME_ROUNDS = 10; // Number of targets per round
+
+// --- Utility ---
+/** Shuffles array in place. Fisher-Yates algorithm. */
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]]; // Swap elements
+    }
+}
+
+
 // --- Global Event Listeners Setup ---
 
 /**
  * Attaches all necessary event listeners to the DOM elements.
+ * Includes event delegation for dynamic elements like reminder buttons.
  */
 function setupEventListeners() {
     // Tab Switching
     if (tabTimer) tabTimer.addEventListener('click', () => showView('timer'));
     if (tabLog) tabLog.addEventListener('click', () => showView('log'));
     if (tabReminders) tabReminders.addEventListener('click', () => showView('reminders'));
-    if (tabWidgets) tabWidgets.addEventListener('click', () => showView('widgets')); // Widget Tab
+    if (tabWidgets) tabWidgets.addEventListener('click', () => showView('widgets'));
 
     // Timer Controls (Main Pomodoro)
     if (startPauseButton) startPauseButton.addEventListener('click', handleStartPauseClick);
@@ -36,56 +54,101 @@ function setupEventListeners() {
         updateQuickSelectActiveState('new-task-quick-projects', 'new-task-project');
     });
 
-     // Reminder Listeners
-     if (addReminderButton) addReminderButton.addEventListener('click', addReminder);
-     if (reminderTextInput) {
-          reminderTextInput.addEventListener('input', (event) => {
-              // NLP handling logic (as provided in original file)
-              clearTimeout(nlpSuggestionDebounceTimer);
-              appliedNlpSuggestionIndex.reminder = -1; // Reset applied state for reminder on new input
-              const currentText = event.target.value;
-              // Only re-render suggestions if text is long enough
-              if (currentText.length < 3) {
-                  // Clear suggestions if text is too short
-                  if (typeof renderTimeSuggestions === 'function') { renderTimeSuggestions([], 'reminder', -1); }
-                  currentNlpSuggestions = []; // Clear state
-                  return;
-              } else {
-                  // Re-render existing suggestions without highlight while typing
-                  if (typeof renderTimeSuggestions === 'function') {
-                      renderTimeSuggestions(currentNlpSuggestions, 'reminder', -1); // Re-render without applied index while typing
-                  }
+    // --- START: Updated Reminder Listeners ---
+    // Main Add/Save Button
+    if (addReminderButton) {
+        // Now calls saveReminder which handles both add and update
+        addReminderButton.addEventListener('click', saveReminder);
+    }
+    // Cancel Edit Button
+    if (cancelEditReminderButton && typeof cancelEditReminder === 'function') {
+        cancelEditReminderButton.addEventListener('click', cancelEditReminder);
+    } else if (cancelEditReminderButton) {
+         console.error("cancelEditReminder function not found!");
+    }
+
+    // Input field listeners (NLP, Enter key)
+    if (reminderTextInput) {
+         reminderTextInput.addEventListener('input', (event) => {
+             // NLP handling logic (as provided in original file)
+             clearTimeout(nlpSuggestionDebounceTimer);
+             appliedNlpSuggestionIndex.reminder = -1;
+             const currentText = event.target.value;
+             if (currentText.length < 3) {
+                 if (typeof renderTimeSuggestions === 'function') { renderTimeSuggestions([], 'reminder', -1); }
+                 currentNlpSuggestions = []; return;
+             } else {
+                 if (typeof renderTimeSuggestions === 'function') { renderTimeSuggestions(currentNlpSuggestions, 'reminder', -1); }
+             }
+             nlpSuggestionDebounceTimer = setTimeout(() => {
+                 const textToParse = reminderTextInput.value;
+                 if (textToParse.length >= 3 && typeof parseTimeInput === 'function' && typeof applyNlpSuggestionUI === 'function') {
+                     const now = new Date();
+                     currentNlpSuggestions = parseTimeInput(textToParse, now);
+                     if (currentNlpSuggestions.length > 0) { applyNlpSuggestionUI(0, 'reminder'); }
+                     else { appliedNlpSuggestionIndex.reminder = -1; if (typeof renderTimeSuggestions === 'function') { renderTimeSuggestions([], 'reminder', -1); } }
+                 } else { currentNlpSuggestions = []; appliedNlpSuggestionIndex.reminder = -1; if (typeof renderTimeSuggestions === 'function') { renderTimeSuggestions([], 'reminder', -1); } }
+             }, NLP_DEBOUNCE_DELAY);
+         });
+         // Add listener for Enter key to trigger save
+         reminderTextInput.addEventListener('keydown', (e) => {
+             if (e.key === 'Enter') {
+                 e.preventDefault();
+                 if(typeof saveReminder === 'function') {
+                     saveReminder();
+                 } else { console.error("saveReminder function not found!"); }
+             }
+         });
+    }
+    // Optional: Add listener for Enter key in datetime-local input as well?
+    // if (reminderTimeInput) { ... }
+
+    // --- Event Delegation for Edit/Delete buttons in the list ---
+    if (reminderListContainer) {
+         reminderListContainer.addEventListener('click', (event) => {
+              const target = event.target;
+              const editButton = target.closest('.reminder-edit-btn');
+              const deleteButton = target.closest('.reminder-delete-btn');
+
+              if (editButton) {
+                   const reminderId = editButton.dataset.reminderId;
+                   if (reminderId && typeof handleEditReminderClick === 'function') {
+                        handleEditReminderClick(reminderId);
+                   } else if (!reminderId) { console.error("Edit button clicked but no reminder ID found."); }
+                   else { console.error("handleEditReminderClick function not found!"); }
+              } else if (deleteButton) {
+                   const reminderId = deleteButton.dataset.reminderId;
+                   if (reminderId && typeof deleteReminder === 'function') {
+                        deleteReminder(reminderId);
+                   } else if (!reminderId) { console.error("Delete button clicked but no reminder ID found."); }
+                    else { console.error("deleteReminder function not found!"); }
               }
-              // Debounce NLP parsing
-              nlpSuggestionDebounceTimer = setTimeout(() => {
-                  const textToParse = reminderTextInput.value;
-                  if (textToParse.length >= 3 && typeof parseTimeInput === 'function' && typeof applyNlpSuggestionUI === 'function') {
-                      const now = new Date();
-                      currentNlpSuggestions = parseTimeInput(textToParse, now); // Generate new suggestions
-                      // Auto-apply the first suggestion if available
-                      if (currentNlpSuggestions.length > 0) {
-                          applyNlpSuggestionUI(0, 'reminder'); // Apply the first suggestion
-                      } else {
-                          // No suggestions found, clear the list and applied state
-                          appliedNlpSuggestionIndex.reminder = -1;
-                          if (typeof renderTimeSuggestions === 'function') {
-                              renderTimeSuggestions([], 'reminder', -1);
-                          }
-                      }
-                  } else {
-                      // Clear state and display if text too short or functions missing
-                      currentNlpSuggestions = [];
-                      appliedNlpSuggestionIndex.reminder = -1;
-                      if (typeof renderTimeSuggestions === 'function') { renderTimeSuggestions([], 'reminder', -1); }
-                  }
-              }, NLP_DEBOUNCE_DELAY);
-          });
-          reminderTextInput.addEventListener('keydown', (e) => {
-              if (e.key === 'Enter') { e.preventDefault(); if(typeof addReminder === 'function') { addReminder(); } else { console.error("addReminder function not found!"); } }
-          });
-     }
-    if (reminderAckButton) reminderAckButton.addEventListener('click', closeReminderAlertModal);
-    if (reminderSnoozeButton) reminderSnoozeButton.addEventListener('click', handleReminderSnooze);
+         });
+    }
+
+    // --- Event Delegation for Snooze buttons in the Alert Modal ---
+    if (reminderAlertModal) {
+         reminderAlertModal.addEventListener('click', (event) => {
+              const target = event.target;
+              const snoozeButton = target.closest('.reminder-snooze-btn'); // Target by class
+
+              if (snoozeButton && snoozeButton.dataset.snooze) {
+                   const snoozeMinutes = parseInt(snoozeButton.dataset.snooze, 10);
+                   if (!isNaN(snoozeMinutes) && typeof handleReminderSnooze === 'function') {
+                        handleReminderSnooze(snoozeMinutes); // Call function from modals.js
+                   } else if (isNaN(snoozeMinutes)) { console.error("Invalid snooze duration found:", snoozeButton.dataset.snooze); }
+                    else { console.error("handleReminderSnooze function not found!"); }
+              }
+         });
+    }
+    // Ack button listener (already existed, ensure it's correct)
+    if (reminderAckButton && typeof closeReminderAlertModal === 'function') {
+        reminderAckButton.addEventListener('click', closeReminderAlertModal);
+    } else if (reminderAckButton) {
+         console.error("closeReminderAlertModal function not found!");
+    }
+    // --- END: Updated Reminder Listeners ---
+
 
     // Project Management
     if (addProjectButton) addProjectButton.addEventListener('click', addProject);
@@ -202,28 +265,23 @@ function setupEventListeners() {
         // *** Connect prediction listener ***
         shortcutTaskInput.addEventListener('input', handleShortcutInputTyping);
     }
-     // Connect the actual Add button in the shortcut modal
-     if (shortcutAddTaskButton) { // Ensure button exists
+     if (shortcutAddTaskButton) {
           shortcutAddTaskButton.addEventListener('click', handleShortcutAddTaskSubmit);
      }
 
     // Global Keyboard Shortcut Listener
     window.addEventListener('keydown', handleGlobalShortcut);
 
-    // --- Widget Listeners ---
-    // Add Widget Modal Controls
+    // Widget Listeners (Add, Modal, Delegation)
     if (addWidgetButton) addWidgetButton.addEventListener('click', openAddWidgetModal);
     if (closeAddWidgetModalButton) closeAddWidgetModalButton.addEventListener('click', closeAddWidgetModal);
     if (cancelAddWidgetButton) cancelAddWidgetButton.addEventListener('click', closeAddWidgetModal);
     if (saveWidgetButton) saveWidgetButton.addEventListener('click', handleSaveWidget);
     if (addWidgetModal) window.addEventListener('click', (event) => { if (event.target === addWidgetModal) closeAddWidgetModal(); });
-
-    // Event Delegation for dynamic widget controls
     if (widgetContainer) {
-        widgetContainer.addEventListener('click', handleWidgetAction);
+        widgetContainer.addEventListener('click', handleWidgetAction); // Delegation for all widget actions
     }
-    // --- End Widget Listeners ---
-}
+} // --- END setupEventListeners ---
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -270,9 +328,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof startReminderChecker === 'function') { startReminderChecker(); }
     else { console.error("startReminderChecker function not found!"); }
 
-    // Restart any countdowns that were running (optional, decided against for now)
-    // restartRunningCountdowns();
-
     console.log("FocusFlow Ready!");
 });
 
@@ -294,227 +349,143 @@ function generateAndRenderAggregatedSummary() {
 }
 
 // --- Project Prediction & Shortcut Logic ---
-
-/**
- * Handles user input in task fields to predict and update the project selection.
- * @param {HTMLInputElement} taskInputElement - The input element for the task description.
- * @param {HTMLSelectElement} projectSelectElement - The project select dropdown element.
- * @param {string|null} quickProjectContainerId - The ID of the container for quick project buttons (or null if none).
- */
+/** Handles user input in task fields to predict and update the project selection. */
 function handleTaskInputForPrediction(taskInputElement, projectSelectElement, quickProjectContainerId) {
     const inputText = taskInputElement.value;
-    if (!inputText.trim()) return; // Don't predict on empty input
-
+    if (!inputText.trim()) return;
     const predictedProjectId = findBestMatchingProject(inputText);
-
     if (predictedProjectId && projectSelectElement.value !== predictedProjectId) {
         projectSelectElement.value = predictedProjectId;
-        // Optionally trigger change event if other logic depends on it
-        // projectSelectElement.dispatchEvent(new Event('change'));
-
-        // Update quick select buttons visually if they exist
         if (quickProjectContainerId) {
             updateQuickSelectActiveState(quickProjectContainerId, projectSelectElement.id);
         }
-         // Update last used timestamp for the predicted project
          updateProjectLastUsed(predictedProjectId);
     }
 }
-
-/**
- * Finds the best matching project ID for a given task description text.
- * Uses simple keyword matching and Levenshtein distance.
- * @param {string} inputText - The task description text.
- * @returns {string|null} - The ID of the best matching project, or null if no good match.
- */
+/** Finds the best matching project ID for a given task description text. */
 function findBestMatchingProject(inputText) {
-    if (!inputText || !projects || projects.length <= 1) return DEFAULT_PROJECT_ID; // Default to Inbox if no input or only Inbox exists
-
+    if (!inputText || !projects || projects.length <= 1) return DEFAULT_PROJECT_ID;
     const textLower = inputText.toLowerCase().trim();
-    let bestMatch = { projectId: null, score: -1 }; // Score: higher is better
-
+    let bestMatch = { projectId: null, score: -1 };
     projects.forEach(project => {
-        if (project.id === DEFAULT_PROJECT_ID) return; // Skip Inbox for matching
-
+        if (project.id === DEFAULT_PROJECT_ID) return;
         const projectNameLower = project.name.toLowerCase();
         let currentScore = 0;
-
-        // 1. Direct keyword match (higher score)
-        if (textLower.includes(projectNameLower)) {
-            // Score based on length of match (longer project names get higher score for containment)
-            currentScore += 10 + projectNameLower.length;
-        }
-
-        // 2. Levenshtein distance (lower distance = higher score)
-        // Only calculate if direct match score is low or non-existent
-        if (currentScore < 10) { // Threshold to prefer direct matches
-             if (typeof levenshteinDistance === 'function') {
-                const distance = levenshteinDistance(textLower.substring(0, 20), projectNameLower); // Compare beginning of task text
-                const maxPossibleDistance = Math.max(textLower.substring(0, 20).length, projectNameLower.length);
-                if (maxPossibleDistance > 0) {
-                    const similarity = 1 - (distance / maxPossibleDistance); // Normalize distance to similarity (0-1)
-                    // Give Levenshtein less weight than direct match
-                    currentScore += Math.max(0, similarity * 5); // Scale similarity score
-                }
-             } else {
-                 console.warn("levenshteinDistance function not found for project prediction.");
-             }
-        }
-
-
-        // 3. Bonus for Recently Used (minor score increase)
-        if (project.lastUsed && project.lastUsed > 0) {
-             // Give a very small bonus, decays over time? For simplicity, just a flat bonus for now.
-             currentScore += 0.5;
-        }
-
-        // Update best match if current project has a higher score
-        if (currentScore > bestMatch.score) {
-            bestMatch = { projectId: project.id, score: currentScore };
-        }
+        if (textLower.includes(projectNameLower)) { currentScore += 10 + projectNameLower.length; }
+        if (currentScore < 10 && typeof levenshteinDistance === 'function') {
+            const distance = levenshteinDistance(textLower.substring(0, 20), projectNameLower);
+            const maxPossibleDistance = Math.max(textLower.substring(0, 20).length, projectNameLower.length);
+            if (maxPossibleDistance > 0) { const similarity = 1 - (distance / maxPossibleDistance); currentScore += Math.max(0, similarity * 5); }
+        } else if (currentScore < 10) { console.warn("levenshteinDistance function not found for project prediction."); }
+        if (project.lastUsed && project.lastUsed > 0) { currentScore += 0.5; }
+        if (currentScore > bestMatch.score) { bestMatch = { projectId: project.id, score: currentScore }; }
     });
-
-    // Return the best match ID if score is above a minimum threshold, otherwise default
-    const MIN_SCORE_THRESHOLD = 3; // Adjust this threshold based on testing
+    const MIN_SCORE_THRESHOLD = 3;
     return (bestMatch.score >= MIN_SCORE_THRESHOLD) ? bestMatch.projectId : DEFAULT_PROJECT_ID;
 }
-
-/**
- * Handles the submission of the shortcut add task modal (via Enter key or button click).
- */
+/** Handles the submission of the shortcut add task modal (via Enter key). */
 function handleShortcutAddTaskSubmit() {
     const text = shortcutTaskInput ? shortcutTaskInput.value : '';
-    if (!text.trim()) {
-        showNotification("Task description cannot be empty.", "warning");
-        return;
-    }
-
-    // Find the best project (or use default)
+    if (!text.trim()) { showNotification("Task description cannot be empty.", "warning"); return; }
     const predictedProjectId = findBestMatchingProject(text) || DEFAULT_PROJECT_ID;
-
-    // Create the task using the core function
-    if (typeof createAndAddTask === 'function') {
-        if (createAndAddTask(text, predictedProjectId)) {
-            // Success
-            closeShortcutAddTaskModal(); // Close modal on success
-        } else {
-            // Failure (e.g., empty text after trimming), notification shown by createAndAddTask
-        }
-    } else {
-        console.error("createAndAddTask function not found!");
-        showNotification("Error adding task.", "error");
-    }
+    if (typeof createAndAddTask === 'function') { if (createAndAddTask(text, predictedProjectId)) { closeShortcutAddTaskModal(); } }
+    else { console.error("createAndAddTask function not found!"); showNotification("Error adding task.", "error"); }
 }
-
-/**
- * Handles the input event in the shortcut modal to show predicted project.
- */
+/** Handles the input event in the shortcut modal to show predicted project. */
 function handleShortcutInputTyping() {
     if (!shortcutTaskInput || !shortcutPredictedProject) return;
-
     const text = shortcutTaskInput.value;
-    if (!text.trim()) {
-        shortcutPredictedProject.textContent = ''; // Clear prediction if input is empty
-        return;
-    }
-
+    if (!text.trim()) { shortcutPredictedProject.textContent = ''; return; }
     const predictedProjectId = findBestMatchingProject(text);
     const predictedProject = projects.find(p => p.id === predictedProjectId);
-
     if (predictedProject && predictedProjectId !== DEFAULT_PROJECT_ID) {
         shortcutPredictedProject.textContent = `Project: ${predictedProject.name}`;
         shortcutPredictedProject.style.color = predictedProject.color || DEFAULT_PROJECT_COLOR;
     } else {
-        shortcutPredictedProject.textContent = 'Project: Inbox'; // Show Inbox if default
+        shortcutPredictedProject.textContent = 'Project: Inbox';
         shortcutPredictedProject.style.color = DEFAULT_PROJECT_COLOR;
     }
 }
-
-
-/** Handles the global keyboard shortcut (Cmd/Ctrl+Shift+H/S and Cmd/Ctrl+Shift+Z). */
+/** Handles global keyboard shortcuts. */
 function handleGlobalShortcut(event) {
     const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
     const modifierKey = isMac ? event.metaKey : event.ctrlKey;
-
-    // --- Helper to check if focus is in an input ---
-    const isInputFocused = () => {
-         const activeElement = document.activeElement;
-         return activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.isContentEditable);
-    };
-
-    // --- Shortcut Add Task (Cmd/Ctrl+Shift+H or S) ---
+    const isInputFocused = () => { const activeElement = document.activeElement; return activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.isContentEditable); };
     if (modifierKey && event.shiftKey && (event.key === 'h' || event.key === 'H' || event.key === 's' || event.key === 'S')) {
-        event.preventDefault();
-        if (typeof openShortcutAddTaskModal === 'function') {
-             openShortcutAddTaskModal();
-        } else { console.error("openShortcutAddTaskModal function not found!"); }
-        return; // Exit after handling
+        event.preventDefault(); if (typeof openShortcutAddTaskModal === 'function') { openShortcutAddTaskModal(); } else { console.error("openShortcutAddTaskModal function not found!"); } return;
     }
-
-    // --- Undo Last Task Completion (Cmd/Ctrl+Shift+Z) ---
     if (modifierKey && event.shiftKey && (event.key === 'z' || event.key === 'Z')) {
-         // Check if focus is inside an input field to prevent accidental undo while typing
-         if (!isInputFocused()) {
-              event.preventDefault();
-              console.log("Undo shortcut detected"); // Optional: for debugging
-              if (typeof undoLastTaskCompletion === 'function') {
-                   undoLastTaskCompletion();
-              } else {
-                   console.error("undoLastTaskCompletion function not found!");
-                   showNotification("Undo function unavailable.", "error");
-              }
-         }
-         return; // Exit after handling
+         if (!isInputFocused()) { event.preventDefault(); console.log("Undo shortcut detected"); if (typeof undoLastTaskCompletion === 'function') { undoLastTaskCompletion(); } else { console.error("undoLastTaskCompletion function not found!"); showNotification("Undo function unavailable.", "error"); } } return;
     }
-
-    // --- Example: Start/Pause Timer (Spacebar, but only if not typing) ---
-    // Note: This can be finicky. Consider if it's truly desired.
-    // if (event.code === 'Space' && !isInputFocused()) {
-    //     event.preventDefault(); // Prevent scrolling
-    //     if (typeof handleStartPauseClick === 'function') {
-    //         handleStartPauseClick();
-    //     }
-    //     return;
-    // }
-
-    // Add other global shortcuts here if needed
 }
-
 
 // --- Widget Functions ---
 
+// js/main.js
+
 /** Opens the modal to add a new widget. */
 function openAddWidgetModal() {
-    if (!addWidgetModal) return;
+    // Ensure required elements exist
+    if (!addWidgetModal || !addWidgetTypeSelect || !addWidgetTitleInput) {
+         console.error("Add widget modal elements not found!");
+         showNotification("Cannot open Add Widget dialog.", "error");
+         return;
+    }
     // Reset form fields
-    if (addWidgetTypeSelect) addWidgetTypeSelect.value = 'counter';
-    if (addWidgetTitleInput) addWidgetTitleInput.value = '';
+    addWidgetTypeSelect.value = 'counter'; // Default to counter type
+    addWidgetTitleInput.value = '';
     addWidgetModal.style.display = 'flex';
-    if (addWidgetTitleInput) addWidgetTitleInput.focus(); // Focus title input
+    // Focus the title input after a short delay for modal transition
+    setTimeout(() => addWidgetTitleInput.focus(), 50);
 }
 
 /** Closes the modal to add a new widget. */
 function closeAddWidgetModal() {
-    if (addWidgetModal) addWidgetModal.style.display = 'none';
+    if (addWidgetModal) {
+        addWidgetModal.style.display = 'none';
+    }
+    // Optionally reset fields again on close, although openAddWidgetModal does it
+    // if (addWidgetTypeSelect) addWidgetTypeSelect.value = 'counter';
+    // if (addWidgetTitleInput) addWidgetTitleInput.value = '';
 }
 
 /** Handles saving a new widget from the modal. */
 function handleSaveWidget() {
-    const type = addWidgetTypeSelect?.value;
-    const title = addWidgetTitleInput?.value.trim();
+    // Ensure required elements exist
+     if (!addWidgetTypeSelect || !addWidgetTitleInput) {
+         console.error("Add widget modal form elements not found!");
+         showNotification("Cannot save widget.", "error");
+         return;
+     }
+
+    const type = addWidgetTypeSelect.value;
+    const title = addWidgetTitleInput.value.trim();
 
     if (!type || !title) {
         showNotification("Please select a widget type and enter a title.", "warning");
         return;
     }
 
-    addWidget(type, title);
+    // Call the main addWidget function (which handles state, saving, rendering)
+    // Ensure addWidget function exists (defined elsewhere in main.js)
+    if (typeof addWidget === 'function') {
+         addWidget(type, title);
+    } else {
+         console.error("addWidget function is not defined!");
+         showNotification("Error adding widget.", "error");
+         // Don't close modal if addWidget failed
+         return;
+    }
+
+    // Close the modal after successfully initiating the add process
     closeAddWidgetModal();
 }
 
+// Make sure the rest of your main.js file (including the actual addWidget function,
+// setupEventListeners, etc.) is present as provided in the previous full file content.
 /**
  * Adds a new widget to the state and UI.
- * @param {'counter' | 'countdown'} type - The type of widget to add.
+ * @param {'counter' | 'countdown' | 'memory-game' | 'reflex-game'} type - The type of widget to add.
  * @param {string} title - The user-defined title for the widget.
  */
 function addWidget(type, title) {
@@ -523,6 +494,12 @@ function addWidget(type, title) {
         initialState = { value: 0 };
     } else if (type === 'countdown') {
         initialState = { timeRemaining: 0, totalSeconds: 0, isRunning: false };
+    // --- START ADDED CODE ---
+    } else if (type === 'memory-game') {
+        initialState = { cards: [], flippedIndices: [], matchedPairs: [], moves: 0, isGameActive: false, isComplete: false };
+    } else if (type === 'reflex-game') {
+        initialState = { score: 0, misses: 0, isActive: false, gameStatus: 'ready', targetTimeoutId: null, roundHits: 0, roundTargetsShown: 0 };
+    // --- END ADDED CODE ---
     } else {
         console.error("Unknown widget type:", type);
         return; // Don't add unknown types
@@ -539,6 +516,17 @@ function addWidget(type, title) {
     saveWidgets(); // Save the updated widgets array
     renderWidgets(); // Re-render the widgets UI
     showNotification(`Widget "${title}" added!`, 'success');
+
+     // Automatically setup memory game board after adding
+     if(type === 'memory-game') {
+          // Find the newly added element (might need slight delay or better way)
+          setTimeout(() => {
+              const widgetElement = widgetContainer?.querySelector(`.widget-card[data-widget-id="${newWidget.id}"]`);
+              if(widgetElement && typeof renderMemoryGameBoard === 'function') {
+                  renderMemoryGameBoard(newWidget.id, widgetElement);
+              }
+          }, 50);
+     }
 }
 
 /**
@@ -547,95 +535,123 @@ function addWidget(type, title) {
  */
 function deleteWidget(widgetId) {
     const widgetIndex = widgets.findIndex(w => w.id === widgetId);
-    if (widgetIndex === -1) {
-        console.error("Widget not found for deletion:", widgetId);
-        return;
-    }
+    if (widgetIndex === -1) { console.error("Widget not found for deletion:", widgetId); return; }
     const widgetTitle = widgets[widgetIndex].title;
 
     // Stop countdown interval if deleting a running countdown
     if (widgets[widgetIndex].type === 'countdown' && activeCountdownIntervals[widgetId]) {
-        clearInterval(activeCountdownIntervals[widgetId]);
-        delete activeCountdownIntervals[widgetId];
+        clearInterval(activeCountdownIntervals[widgetId]); delete activeCountdownIntervals[widgetId];
     }
+    // --- START ADDED CODE: Clear game timers on delete ---
+    if (widgets[widgetIndex].type === 'reflex-game' && widgets[widgetIndex].state.targetTimeoutId) {
+        clearTimeout(widgets[widgetIndex].state.targetTimeoutId);
+    }
+    // Add similar cleanup for memory game timeouts if any are added
+    // --- END ADDED CODE ---
 
-    // Show confirmation
     showConfirmationModal(`Delete widget "${widgetTitle}"?`, () => {
-        widgets.splice(widgetIndex, 1); // Remove from array
-        saveWidgets(); // Save changes
-        renderWidgets(); // Update UI
+        widgets.splice(widgetIndex, 1);
+        saveWidgets();
+        renderWidgets();
         showNotification(`Widget "${widgetTitle}" deleted.`, 'warning');
     });
 }
 
 /**
- * Handles actions triggered by clicking buttons within widgets using event delegation.
+ * Handles actions triggered by clicking buttons OR game elements within widgets using event delegation.
  * @param {Event} event - The click event object.
  */
 function handleWidgetAction(event) {
-    const button = event.target.closest('button'); // Find the clicked button
-    if (!button) return; // Exit if click wasn't on a button
+    const targetElement = event.target;
+    const widgetCard = targetElement.closest('.widget-card');
+    if (!widgetCard) return; // Click wasn't inside a widget card
 
-    const action = button.dataset.action; // Get action from data-action attribute
-    const widgetCard = button.closest('.widget-card');
-    const widgetId = widgetCard?.dataset.widgetId; // Get widget ID from parent card
-
-    if (!action || !widgetId) return; // Exit if no action or widget ID found
-
-    // Find the widget in the state array
+    const widgetId = widgetCard.dataset.widgetId;
     const widget = widgets.find(w => w.id === widgetId);
-    if (!widget) {
-        console.error("Widget state not found for ID:", widgetId);
-        return;
+    if (!widget) { console.error("Widget state not found for ID:", widgetId); return; }
+
+    // --- Check for specific button actions FIRST ---
+    const button = targetElement.closest('button');
+    if (button && button.dataset.action) {
+        const action = button.dataset.action;
+
+        // Handle specific actions based on widget type and action name
+        switch (widget.type) {
+            case 'counter':
+                switch (action) {
+                    case 'increment': widget.state.value++; break;
+                    case 'decrement': widget.state.value--; break;
+                    case 'reset': widget.state.value = 0; break;
+                    case 'delete': deleteWidget(widgetId); return; // Early return for delete
+                    default: console.warn("Unknown counter action:", action); return;
+                }
+                saveWidgets();
+                const displayElement = widgetCard.querySelector('[data-role="display"]');
+                if (displayElement) displayElement.textContent = widget.state.value;
+                return; // Action handled
+
+            case 'countdown':
+                switch (action) {
+                    case 'start': startCustomCountdown(widgetId, widgetCard); break;
+                    case 'pause': pauseCustomCountdown(widgetId, widgetCard); break;
+                    case 'reset': resetCustomCountdown(widgetId, widgetCard); break;
+                    case 'delete': deleteWidget(widgetId); return; // Early return for delete
+                    default: console.warn("Unknown countdown action:", action); return;
+                }
+                // Countdown functions handle their own saves/updates
+                return; // Action handled
+
+            // --- START ADDED GAME ACTIONS ---
+            case 'memory-game':
+                 switch(action) {
+                     case 'memory-new-game': setupMemoryGame(widgetId); break;
+                     case 'delete': deleteWidget(widgetId); return;
+                     default: console.warn("Unknown memory game action:", action); return;
+                 }
+                 return; // Action handled
+
+             case 'reflex-game':
+                 switch(action) {
+                     case 'reflex-start-round': startReflexRound(widgetId); break;
+                     case 'reflex-reset-score': resetReflexScore(widgetId); break;
+                     case 'delete': deleteWidget(widgetId); return;
+                     default: console.warn("Unknown reflex game action:", action); return;
+                 }
+                 return; // Action handled
+            // --- END ADDED GAME ACTIONS ---
+        }
+    } // --- End check for button actions ---
+
+
+    // --- Check for clicks on game elements if no button action was handled ---
+    if (widget.type === 'memory-game') {
+        const clickedCard = targetElement.closest('.memory-card');
+        // Check if the click was on a card itself (and not matched, game active - handled inside handler)
+        if (clickedCard && !clickedCard.classList.contains('is-matched')) {
+             handleMemoryCardClick(event); // Pass the event object
+             return; // Game element click handled
+        }
+    } else if (widget.type === 'reflex-game') {
+         const gameArea = widgetCard.querySelector('[data-role="game-area"]');
+         const target = widgetCard.querySelector('[data-role="target"]');
+
+         // Check if click was on the target
+         if (target && target.contains(targetElement)) {
+             handleReflexTargetClick(widgetId, event); // Pass ID and event
+             return; // Target click handled
+         }
+         // Check if click was within the game area (but not the target itself) - counts as miss
+         else if (gameArea && gameArea.contains(targetElement)) {
+              handleReflexAreaClick(widgetId, event); // Pass ID and event
+              return; // Area click handled
+         }
     }
 
-    // Perform action based on widget type and action name
-    if (widget.type === 'counter') {
-        switch (action) {
-            case 'increment':
-                widget.state.value++;
-                break;
-            case 'decrement':
-                widget.state.value--;
-                break;
-            case 'reset':
-                widget.state.value = 0;
-                break;
-            case 'delete':
-                deleteWidget(widgetId);
-                return; // Deletion handles its own save/render
-            default:
-                console.warn("Unknown counter action:", action);
-                return;
-        }
-        saveWidgets(); // Save after counter update
-        // Update only the specific counter display for efficiency
-        const displayElement = widgetCard.querySelector('[data-role="display"]');
-        if (displayElement) displayElement.textContent = widget.state.value;
-
-    } else if (widget.type === 'countdown') {
-        switch (action) {
-            case 'start':
-                startCustomCountdown(widgetId, widgetCard);
-                break;
-            case 'pause':
-                pauseCustomCountdown(widgetId, widgetCard);
-                break;
-            case 'reset':
-                resetCustomCountdown(widgetId, widgetCard);
-                break;
-            case 'delete':
-                deleteWidget(widgetId);
-                return; // Deletion handles its own save/render
-            default:
-                console.warn("Unknown countdown action:", action);
-                return;
-        }
-        // Countdown functions handle their own saving and UI updates
-    }
     // Add handlers for other widget types here
 }
 
+
+// js/main.js (within the file)
 
 /**
  * Updates the display of a specific countdown widget.
@@ -644,6 +660,7 @@ function handleWidgetAction(event) {
  */
 function updateCustomCountdownDisplay(widgetId, widgetCardElement) {
     const widget = widgets.find(w => w.id === widgetId);
+    // Ensure widget exists, is a countdown, and the element is valid
     if (!widget || widget.type !== 'countdown' || !widgetCardElement) return;
 
     const displayElement = widgetCardElement.querySelector('[data-role="display"]');
@@ -651,12 +668,15 @@ function updateCustomCountdownDisplay(widgetId, widgetCardElement) {
     const pauseButton = widgetCardElement.querySelector('[data-action="pause"]');
     const durationInput = widgetCardElement.querySelector('[data-role="duration-input"]');
 
+    // Update timer display text
     if (displayElement) {
+        // Use formatTime utility, default to 0 if timeRemaining is somehow undefined
         displayElement.textContent = formatTime(widget.state.timeRemaining || 0);
     }
-    // Update button states
+    // Update button enabled/disabled states based on whether the timer is running
     if (startButton) startButton.disabled = widget.state.isRunning;
     if (pauseButton) pauseButton.disabled = !widget.state.isRunning;
+    // Disable duration input while timer is running
     if (durationInput) durationInput.disabled = widget.state.isRunning;
 }
 
@@ -670,33 +690,42 @@ function startCustomCountdown(widgetId, widgetCardElement) {
     if (widgetIndex === -1 || widgets[widgetIndex].type !== 'countdown') return;
 
     const widget = widgets[widgetIndex];
-    if (widget.state.isRunning) return; // Already running
+    if (widget.state.isRunning) return; // Already running, do nothing
 
-    const durationInput = widgetCardElement.querySelector('[data-role="duration-input"]');
+    const durationInput = widgetCardElement?.querySelector('[data-role="duration-input"]'); // Use optional chaining
+    // Parse duration, default to 0 if input doesn't exist or is invalid
     const durationMinutes = parseInt(durationInput?.value || '0');
 
+    // Only start if duration is valid OR if resuming a previously paused timer
     if (durationMinutes <= 0 && widget.state.timeRemaining <= 0) {
         showNotification("Please enter a valid duration (minutes).", "warning");
         return;
     }
 
-    // If starting from 0 or reset state, set the total duration
+    // If starting from 0 or reset state, set the total duration and remaining time
     if (widget.state.timeRemaining <= 0) {
         widget.state.totalSeconds = durationMinutes * 60;
         widget.state.timeRemaining = widget.state.totalSeconds;
     }
-    // If resuming, use the existing remaining time
+    // If resuming, timeRemaining is already set, just ensure totalSeconds is valid
+    else if (widget.state.totalSeconds <= 0) {
+         // If resuming but totalSeconds wasn't set, estimate from duration input or remaining time
+         widget.state.totalSeconds = durationMinutes > 0 ? durationMinutes * 60 : widget.state.timeRemaining;
+    }
+
 
     widget.state.isRunning = true;
-    clearInterval(activeCountdownIntervals[widgetId]); // Clear previous interval for this widget
-    updateCustomCountdownDisplay(widgetId, widgetCardElement); // Update UI immediately
-    saveWidgets(); // Save running state
+    clearInterval(activeCountdownIntervals[widgetId]); // Clear previous interval for this widget just in case
+    updateCustomCountdownDisplay(widgetId, widgetCardElement); // Update UI immediately (disable input/buttons)
+    saveWidgets(); // Save the running state
 
+    // --- Start the interval ---
     activeCountdownIntervals[widgetId] = setInterval(() => {
-        // Re-find widget in case state array reference changes (though unlikely here)
+        // It's safer to find the widget again inside interval in case the array was modified elsewhere
         const currentWidget = widgets.find(w => w.id === widgetId);
+
+        // Stop interval if widget removed or paused externally
         if (!currentWidget || !currentWidget.state.isRunning) {
-            // Stop interval if widget removed or paused externally
             clearInterval(activeCountdownIntervals[widgetId]);
             delete activeCountdownIntervals[widgetId];
             return;
@@ -705,22 +734,24 @@ function startCustomCountdown(widgetId, widgetCardElement) {
         currentWidget.state.timeRemaining--;
 
         // Update display within the interval
+        // Find the element again as well, though less critical usually
         const currentCard = document.querySelector(`.widget-card[data-widget-id="${widgetId}"]`);
         if (currentCard) {
             updateCustomCountdownDisplay(widgetId, currentCard);
         }
 
+        // Check if timer reached zero
         if (currentWidget.state.timeRemaining <= 0) {
             // Find the card element again inside the interval callback just in case
             const finalCard = document.querySelector(`.widget-card[data-widget-id="${widgetId}"]`);
-            pauseCustomCountdown(widgetId, finalCard); // Stop timer visually
+            // Stop the timer visually and clear interval (pauseCustomCountdown handles this)
+            pauseCustomCountdown(widgetId, finalCard);
             showNotification(`Countdown "${currentWidget.title}" finished!`, "success");
-            playNotificationSound(); // Play sound
-            // Optionally trigger reminder here if that feature is re-added
-            saveWidgets(); // Save the final state (timeRemaining=0, isRunning=false)
+            if(typeof playNotificationSound === 'function') { playNotificationSound(); } // Play sound
+            // Save the final state (timeRemaining=0, isRunning=false) - pause handles save
         }
         // No need to saveWidgets() on every tick, only on state changes (start/pause/reset/finish)
-    }, 1000);
+    }, 1000); // Update every second
 }
 
 /**
@@ -733,14 +764,18 @@ function pauseCustomCountdown(widgetId, widgetCardElement) {
     if (widgetIndex === -1 || widgets[widgetIndex].type !== 'countdown') return;
 
     const widget = widgets[widgetIndex];
-    if (!widget.state.isRunning) return; // Not running
+    if (!widget.state.isRunning) return; // Not running, do nothing
 
     widget.state.isRunning = false;
+    // Clear the interval associated with this widget
     clearInterval(activeCountdownIntervals[widgetId]);
     delete activeCountdownIntervals[widgetId]; // Remove interval ID reference
 
-    if(widgetCardElement) { updateCustomCountdownDisplay(widgetId, widgetCardElement); } // Update UI if element provided
-    saveWidgets(); // Save paused state
+    // Update UI if element provided (enable input/buttons)
+    if(widgetCardElement) {
+        updateCustomCountdownDisplay(widgetId, widgetCardElement);
+    }
+    saveWidgets(); // Save the paused state
 }
 
 /**
@@ -760,16 +795,338 @@ function resetCustomCountdown(widgetId, widgetCardElement) {
         delete activeCountdownIntervals[widgetId];
     }
 
-    // Reset state
+    // Reset state properties
     widget.state.isRunning = false;
     widget.state.timeRemaining = 0;
-    widget.state.totalSeconds = 0; // Or reset based on input? Let's clear total too.
+    widget.state.totalSeconds = 0; // Reset total duration as well
 
-    // Reset input field value (optional - could leave it as last used duration)
-    // const durationInput = widgetCardElement?.querySelector('[data-role="duration-input"]');
-    // if (durationInput) durationInput.value = ''; // Clear input
+    // Reset input field value (optional - keeps last duration if commented out)
+    const durationInput = widgetCardElement?.querySelector('[data-role="duration-input"]');
+    if (durationInput) durationInput.value = ''; // Clear input on reset
 
-    if(widgetCardElement) { updateCustomCountdownDisplay(widgetId, widgetCardElement); } // Update display if element provided
-    saveWidgets(); // Save reset state
+
+    // Update display (should show 0:00) and enable buttons/input
+    if(widgetCardElement) {
+        updateCustomCountdownDisplay(widgetId, widgetCardElement);
+    }
+    saveWidgets(); // Save the reset state
 }
+
+// --- START: Memory Game Logic ---
+
+/** Sets up a new memory game: creates pairs, shuffles, resets state */
+function setupMemoryGame(widgetId) {
+    const widgetIndex = widgets.findIndex(w => w.id === widgetId);
+    if (widgetIndex === -1 || widgets[widgetIndex].type !== 'memory-game') return;
+
+    const gameSymbols = [...MEMORY_GAME_SYMBOLS]; // Copy symbols
+    const cards = [...gameSymbols, ...gameSymbols]; // Create pairs
+    shuffleArray(cards); // Shuffle them
+
+    // Reset widget state
+    widgets[widgetIndex].state = {
+        cards: cards,
+        flippedIndices: [],
+        matchedPairs: [],
+        moves: 0,
+        isGameActive: true, // Start the game immediately
+        isComplete: false
+    };
+
+    saveWidgets(); // Save the new game state
+
+    // Find the widget element and re-render the board
+    const widgetElement = widgetContainer?.querySelector(`.widget-card[data-widget-id="${widgetId}"]`);
+    if (widgetElement && typeof renderMemoryGameBoard === 'function') {
+        renderMemoryGameBoard(widgetId, widgetElement);
+    }
+}
+
+/** Handles clicks on memory game cards */
+function handleMemoryCardClick(event) {
+    const cardElement = event.target.closest('.memory-card');
+    if (!cardElement) return;
+
+    const widgetCard = cardElement.closest('.widget-card');
+    const widgetId = widgetCard?.dataset.widgetId;
+    const cardIndex = parseInt(cardElement.dataset.cardIndex);
+
+    const widgetIndex = widgets.findIndex(w => w.id === widgetId);
+    if (widgetIndex === -1) return;
+    const widget = widgets[widgetIndex];
+
+    // Prevent action if game not active, card already matched, or already flipped, or 2 cards already flipped
+    if (!widget.state.isGameActive || widget.state.flippedIndices.includes(cardIndex) || widget.state.flippedIndices.length >= 2) {
+        return;
+    }
+
+    // --- Flip the card ---
+    widget.state.flippedIndices.push(cardIndex);
+    cardElement.classList.add('is-flipped'); // Immediate visual feedback
+
+    // --- Check for match if two cards are flipped ---
+    if (widget.state.flippedIndices.length === 2) {
+        widget.state.moves++; // Increment move count
+        const [index1, index2] = widget.state.flippedIndices;
+        const cardValue1 = widget.state.cards[index1];
+        const cardValue2 = widget.state.cards[index2];
+
+        if (cardValue1 === cardValue2) {
+            // Match found!
+            widget.state.matchedPairs.push(cardValue1);
+            // Mark cards visually as matched immediately
+            const card1 = widgetCard.querySelector(`[data-card-index="${index1}"]`);
+            const card2 = widgetCard.querySelector(`[data-card-index="${index2}"]`);
+            if (card1) card1.classList.add('is-matched');
+            if (card2) card2.classList.add('is-matched');
+            // Clear flipped indices for next turn
+            widget.state.flippedIndices = [];
+
+             // Check for game completion
+             if (widget.state.matchedPairs.length === MEMORY_GAME_SYMBOLS.length) {
+                 widget.state.isComplete = true;
+                 widget.state.isGameActive = false; // Game ends
+                 showNotification(`Memory Game Complete in ${widget.state.moves} moves! 🎉`, "success");
+                  if(typeof updateMemoryGameInfo === 'function') { updateMemoryGameInfo(widgetId, widgetCard);} // Update info display
+                  // Update button text
+                  const newGameButton = widgetCard.querySelector('[data-action="memory-new-game"]');
+                  if(newGameButton) newGameButton.textContent = "Play Again?";
+             }
+
+        } else {
+            // No match - flip back after a delay
+            // Prevent further clicks during the delay
+            widget.state.isGameActive = false;
+            setTimeout(() => {
+                widget.state.flippedIndices.forEach(idx => {
+                    const cardToFlip = widgetCard.querySelector(`[data-card-index="${idx}"]`);
+                    if (cardToFlip) cardToFlip.classList.remove('is-flipped');
+                });
+                widget.state.flippedIndices = [];
+                widget.state.isGameActive = true; // Allow clicks again
+                if(typeof updateMemoryGameInfo === 'function') { updateMemoryGameInfo(widgetId, widgetCard); } // Update moves display
+            }, 1000); // 1 second delay
+        }
+    }
+
+    // Save state and update info display (moves count)
+    saveWidgets();
+    if(typeof updateMemoryGameInfo === 'function') { updateMemoryGameInfo(widgetId, widgetCard); }
+}
+
+// --- END: Memory Game Logic ---
+
+
+// --- START: Reflex Game Logic ---
+
+/** Starts a round of the reflex game */
+function startReflexRound(widgetId) {
+    const widgetIndex = widgets.findIndex(w => w.id === widgetId);
+    if (widgetIndex === -1 || widgets[widgetIndex].type !== 'reflex-game') return;
+    const widget = widgets[widgetIndex];
+
+    // Don't start if already playing
+    if (widget.state.gameStatus === 'playing') return;
+
+    // Reset round state
+    widget.state.gameStatus = 'playing';
+    widget.state.roundHits = 0;
+    widget.state.roundTargetsShown = 0;
+    widget.state.isActive = false; // Target not initially active
+
+    // Clear any existing target timeout
+    if (widget.state.targetTimeoutId) {
+         clearTimeout(widget.state.targetTimeoutId);
+         widget.state.targetTimeoutId = null;
+    }
+
+    saveWidgets();
+
+    // Update display (e.g., disable start button)
+    const widgetElement = widgetContainer?.querySelector(`.widget-card[data-widget-id="${widgetId}"]`);
+    if (widgetElement && typeof updateReflexGameDisplay === 'function') {
+        updateReflexGameDisplay(widgetId, widgetElement);
+    }
+
+    showNotification(`Reflex Round Started! (${REFLEX_GAME_ROUNDS} targets)`, "info", 1500);
+
+    // Start the first target showing process
+    showReflexTarget(widgetId);
+}
+
+/** Shows a target at a random position after a random delay */
+function showReflexTarget(widgetId) {
+     const widgetIndex = widgets.findIndex(w => w.id === widgetId);
+     if (widgetIndex === -1) return;
+     const widget = widgets[widgetIndex];
+
+     // Stop if game status changed
+     if (widget.state.gameStatus !== 'playing') return;
+
+     // Clear previous timeout just in case
+     if (widget.state.targetTimeoutId) clearTimeout(widget.state.targetTimeoutId);
+
+     // Calculate random delay
+     const delay = Math.random() * (REFLEX_GAME_DELAY_MAX - REFLEX_GAME_DELAY_MIN) + REFLEX_GAME_DELAY_MIN;
+
+     widget.state.targetTimeoutId = setTimeout(() => {
+          const widgetElement = widgetContainer?.querySelector(`.widget-card[data-widget-id="${widgetId}"]`);
+          const gameArea = widgetElement?.querySelector('[data-role="game-area"]');
+          const targetElement = widgetElement?.querySelector('[data-role="target"]');
+
+          if (gameArea && targetElement) {
+               // Calculate random position within the game area
+               const areaRect = gameArea.getBoundingClientRect();
+               const targetSize = 40; // Must match CSS
+               const maxX = areaRect.width - targetSize;
+               const maxY = areaRect.height - targetSize;
+               const randomX = Math.max(0, Math.floor(Math.random() * maxX));
+               const randomY = Math.max(0, Math.floor(Math.random() * maxY));
+
+               // Position and show the target
+               targetElement.style.left = `${randomX}px`;
+               targetElement.style.top = `${randomY}px`;
+               targetElement.style.display = 'block';
+               targetElement.classList.remove('hit'); // Ensure 'hit' class is removed
+
+               widget.state.isActive = true; // Target is now active
+               widget.state.roundTargetsShown++; // Increment shown count
+
+               // Set timeout to hide the target if not clicked (counts as miss)
+               widget.state.targetTimeoutId = setTimeout(() => {
+                   if (widget.state.isActive) { // Check if it wasn't already clicked
+                        handleReflexTargetClick(widgetId, null, true); // Pass 'missed=true'
+                   }
+               }, REFLEX_GAME_TARGET_DURATION);
+
+               saveWidgets(); // Save state with active target
+          }
+
+     }, delay);
+     saveWidgets(); // Save state with new timeout ID
+}
+
+/** Handles click on the reflex game target */
+function handleReflexTargetClick(widgetId, event, missed = false) {
+    const widgetIndex = widgets.findIndex(w => w.id === widgetId);
+    if (widgetIndex === -1) return;
+    const widget = widgets[widgetIndex];
+
+    // Only process if target was active
+    if (!widget.state.isActive) return;
+
+     // Clear the timeout that would hide the target
+     if (widget.state.targetTimeoutId) clearTimeout(widget.state.targetTimeoutId);
+     widget.state.targetTimeoutId = null;
+     widget.state.isActive = false; // Target is no longer active
+
+    const widgetElement = widgetContainer?.querySelector(`.widget-card[data-widget-id="${widgetId}"]`);
+    const targetElement = widgetElement?.querySelector('[data-role="target"]');
+
+    if (missed) {
+        widget.state.misses++;
+         if (targetElement) targetElement.style.display = 'none'; // Hide target immediately on miss
+    } else {
+        widget.state.score++;
+        widget.state.roundHits++;
+        if (targetElement) {
+            // Optional: Visual feedback for hit
+            targetElement.classList.add('hit');
+            // Hide after a very short delay
+            setTimeout(() => { targetElement.style.display = 'none'; }, 150);
+        }
+    }
+
+    // Check if round is over
+    if (widget.state.roundTargetsShown >= REFLEX_GAME_ROUNDS) {
+        widget.state.gameStatus = 'finished';
+        showNotification(`Reflex Round Over! Score: ${widget.state.roundHits}/${REFLEX_GAME_ROUNDS}`, "success");
+    } else {
+        // Schedule the next target
+        showReflexTarget(widgetId);
+    }
+
+    saveWidgets();
+    // Update display
+    if (widgetElement && typeof updateReflexGameDisplay === 'function') {
+        updateReflexGameDisplay(widgetId, widgetElement);
+    }
+}
+
+/** Handles click on the reflex game area (a miss) */
+function handleReflexAreaClick(widgetId, event) {
+     const widgetIndex = widgets.findIndex(w => w.id === widgetId);
+     if (widgetIndex === -1) return;
+     const widget = widgets[widgetIndex];
+
+     // Only count as miss if game is playing and target is NOT active (otherwise target click handles it)
+     if (widget.state.gameStatus === 'playing' && !widget.state.isActive) {
+         // Could increment a general miss counter, or just ignore clicks in the area when target not active
+         // Let's just ignore it for simplicity for now, misses are handled by target timeout.
+         console.log("Reflex area clicked while target not active.");
+     } else if (widget.state.gameStatus === 'playing' && widget.state.isActive) {
+         // Clicked area while target WAS active - counts as a miss for the current target
+          // Clear the timeout that would hide the target
+          if (widget.state.targetTimeoutId) clearTimeout(widget.state.targetTimeoutId);
+          widget.state.targetTimeoutId = null;
+          widget.state.isActive = false; // Target is no longer active
+
+          widget.state.misses++;
+
+           const widgetElement = widgetContainer?.querySelector(`.widget-card[data-widget-id="${widgetId}"]`);
+           const targetElement = widgetElement?.querySelector('[data-role="target"]');
+           if (targetElement) targetElement.style.display = 'none'; // Hide target
+
+           // Check if round is over
+           if (widget.state.roundTargetsShown >= REFLEX_GAME_ROUNDS) {
+               widget.state.gameStatus = 'finished';
+               showNotification(`Reflex Round Over! Score: ${widget.state.roundHits}/${REFLEX_GAME_ROUNDS}`, "success");
+           } else {
+               // Schedule the next target
+               showReflexTarget(widgetId);
+           }
+            saveWidgets();
+            if (widgetElement && typeof updateReflexGameDisplay === 'function') {
+                updateReflexGameDisplay(widgetId, widgetElement);
+            }
+     }
+}
+
+/** Resets the overall score/misses for the reflex game */
+function resetReflexScore(widgetId) {
+     const widgetIndex = widgets.findIndex(w => w.id === widgetId);
+     if (widgetIndex === -1 || widgets[widgetIndex].type !== 'reflex-game') return;
+     const widget = widgets[widgetIndex];
+
+     widget.state.score = 0;
+     widget.state.misses = 0;
+     widget.state.roundHits = 0; // Also reset round hits if desired
+     // Optionally reset gameStatus to 'ready' if not playing
+     // if(widget.state.gameStatus !== 'playing') widget.state.gameStatus = 'ready';
+
+     saveWidgets();
+     const widgetElement = widgetContainer?.querySelector(`.widget-card[data-widget-id="${widgetId}"]`);
+     if (widgetElement && typeof updateReflexGameDisplay === 'function') {
+         updateReflexGameDisplay(widgetId, widgetElement);
+     }
+      showNotification(`Reflex game score reset.`, "info");
+}
+
+// --- END: Reflex Game Logic ---
+
+
 // --- End Widget Functions ---
+
+// Add this to your main.js or near the end of index.html script block
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js') // Ensure path is correct
+      .then(registration => {
+        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+      })
+      .catch(error => {
+        console.log('ServiceWorker registration failed: ', error);
+      });
+  });
+}

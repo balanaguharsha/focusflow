@@ -185,7 +185,6 @@ const reminderAlertModal = document.getElementById('reminder-alert-modal');
 const reminderAlertText = document.getElementById('reminder-alert-text');
 const reminderAlertTime = document.getElementById('reminder-alert-time');
 const reminderAckButton = document.getElementById('reminder-ack-button');
-const reminderSnoozeButton = document.getElementById('reminder-snooze-button');
 
 // Notification Area
 const notificationArea = document.getElementById('notification-area');

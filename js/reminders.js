@@ -1,101 +1,103 @@
-// js/reminders.js
-
 // --- Reminder Constants ---
-const REMINDER_CHECK_INTERVAL = 15000; // Check every 15 seconds (adjust as needed)
+const REMINDER_CHECK_INTERVAL = 15000; // Check every 15 seconds
+
+// --- Reminder DOM Element References (ensure these are defined in domElements.js) ---
+// Assuming these IDs exist from the updated index.html
+const reminderFormTitle = document.getElementById('reminder-form-title');
+const editingReminderIdInput = document.getElementById('editing-reminder-id-input'); // Hidden input
+const reminderCategoryInput = document.getElementById('reminder-category');
+const reminderPersistentCheckbox = document.getElementById('reminder-persistent');
+const cancelEditReminderButton = document.getElementById('cancel-edit-reminder-button');
+
 
 // --- Reminder Functions ---
 
+
 /**
- * Adds a new reminder. Reads current values from the input fields,
- * assuming NLP suggestions/trimming might have occurred via the input listener.
- * Triggered by clicking the "Add Reminder" button or pressing Enter in the text field.
+ * Prepares the form for editing a specific reminder.
+ * @param {string} reminderId - The ID of the reminder to edit.
  */
-function addReminder() {
-    // Check if required elements exist
-    if (!reminderTextInput || !reminderTimeInput) {
-        console.error("Reminder input elements not found for adding reminder.");
-        return; // Exit if elements are missing
-    }
+function handleEditReminderClick(reminderId) {
+     // Ensure required elements exist
+     if (!reminderTextInput || !reminderTimeInput || !reminderCategoryInput || !reminderPersistentCheckbox || !editingReminderIdInput || !addReminderButton || !cancelEditReminderButton || !reminderFormTitle) {
+         console.error("Reminder input elements not found for editing.");
+         return;
+     }
 
-    // 1. Read the CURRENT values from the input fields
-    // The text might have been modified by applyNlpSuggestionUI if a suggestion was auto-applied
-    const reminderText = reminderTextInput.value.trim();
-    // The time value might have been set by applyNlpSuggestionUI
-    const timeValue = reminderTimeInput.value;
+     const reminder = reminders.find(r => r.id === reminderId);
+     if (!reminder) {
+         showNotification("Could not find reminder to edit.", "error");
+         return;
+     }
 
-    // --- 2. Final Validation ---
-    if (!reminderText) {
-        showNotification("Please enter reminder text.", "warning");
-        reminderTextInput.focus();
-        return;
-    }
-    if (!timeValue) {
-        showNotification("Please select or enter a date and time for the reminder.", "warning");
-        reminderTimeInput.focus();
-        return;
-    }
+     // Populate form fields
+     editingReminderIdInput.value = reminder.id; // Store ID in hidden input
+     reminderTextInput.value = reminder.text;
+     reminderCategoryInput.value = reminder.category || '';
+     reminderPersistentCheckbox.checked = reminder.isPersistent || false;
 
-    const reminderTime = new Date(timeValue).getTime(); // Get timestamp from the final time value
-
-    if (isNaN(reminderTime)) {
-        showNotification("Invalid date/time selected.", "error");
-        return;
-    }
-
-    const currentTime = Date.now();
-    // Allow a small buffer (e.g., 1 second) for race conditions
-    if (reminderTime <= currentTime + 1000) {
-        showNotification("Reminder time must be in the future.", "warning");
-        return;
-    }
-    // --- End Validation ---
+     // Format timestamp for datetime-local input (YYYY-MM-DDTHH:mm)
+     try {
+          const dt = luxon.DateTime.fromMillis(reminder.time);
+          if (dt.isValid) {
+               // Format correctly for datetime-local value property
+               reminderTimeInput.value = dt.toFormat("yyyy-LL-dd'T'HH:mm");
+          } else {
+               console.warn("Invalid time for reminder being edited:", reminder.time);
+               reminderTimeInput.value = ''; // Clear if invalid
+          }
+     } catch (e) {
+          console.error("Error formatting reminder time for edit:", e);
+          reminderTimeInput.value = '';
+     }
 
 
-    // --- 3. Create Reminder Object ---
-    const newReminder = {
-        id: generateUniqueId('reminder'),
-        text: reminderText, // Use the final text from the input
-        time: reminderTime, // Use the final time from the input
-        triggered: false
-    };
+     // Update UI for editing state
+     reminderFormTitle.textContent = "Edit Reminder";
+     addReminderButton.textContent = "Save Changes";
+     cancelEditReminderButton.style.display = 'inline-block'; // Show cancel button
 
-    // --- 4. Add, Save, Render, Clear ---
-    reminders.push(newReminder);
-    saveReminders();
-    // Ensure renderReminders function exists (should be in ui.js or reminders.js)
-    if(typeof renderReminders === 'function') {
-        renderReminders(); // Update UI list
-    } else {
-        console.error("renderReminders function not found!");
-    }
+     // Scroll to form and focus text input
+     reminderTextInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+     reminderTextInput.focus();
+     // Clear NLP suggestions when starting edit
+     currentNlpSuggestions = [];
+     appliedNlpSuggestionIndex.reminder = -1;
+     if(typeof renderTimeSuggestions === 'function') { renderTimeSuggestions([], 'reminder', -1); }
+}
 
+/**
+ * Cancels the editing state, clearing the form and resetting buttons.
+ */
+function cancelEditReminder() {
+    // Ensure required elements exist
+     if (!reminderTextInput || !reminderTimeInput || !reminderCategoryInput || !reminderPersistentCheckbox || !editingReminderIdInput || !addReminderButton || !cancelEditReminderButton || !reminderFormTitle) {
+         console.error("Reminder input elements not found for cancelling edit.");
+         return;
+     }
 
-    // Clear inputs AFTER successful add
-    reminderTextInput.value = '';
-    reminderTimeInput.value = '';
+     // Clear form fields
+     editingReminderIdInput.value = ''; // Clear hidden ID
+     reminderTextInput.value = '';
+     reminderTimeInput.value = '';
+     reminderCategoryInput.value = '';
+     reminderPersistentCheckbox.checked = false;
 
-    // Clear suggestions display and associated state
-    currentNlpSuggestions = []; // Clear suggestions state
-    appliedNlpSuggestionIndex.reminder = -1; // Reset applied index for reminder
-    if(typeof renderTimeSuggestions === 'function') {
-        // Clear the suggestions UI
-        renderTimeSuggestions([], 'reminder', -1);
-    }
+     // Reset UI state
+     reminderFormTitle.textContent = "Set a Reminder";
+     addReminderButton.textContent = "Add Reminder";
+     cancelEditReminderButton.style.display = 'none'; // Hide cancel button
 
-
-    showNotification("Reminder added!", "success");
-
-    // Ensure the reminder checker is running
-    if(typeof startReminderChecker === 'function') {
-        startReminderChecker();
-    } else {
-        console.error("startReminderChecker function not found!");
-    }
+     // Clear NLP suggestions state
+     currentNlpSuggestions = [];
+     appliedNlpSuggestionIndex.reminder = -1;
+     if(typeof renderTimeSuggestions === 'function') { renderTimeSuggestions([], 'reminder', -1); }
 }
 
 
 /**
  * Deletes a reminder by its ID after confirmation.
+ * Also cancels editing if the deleted reminder was being edited.
  * @param {string} reminderId - The ID of the reminder to delete.
  */
 function deleteReminder(reminderId) {
@@ -113,6 +115,12 @@ function deleteReminder(reminderId) {
             // --- Confirmation callback ---
             reminders.splice(reminderIndex, 1); // Remove from array
             saveReminders(); // Save changes
+
+            // If the deleted reminder was being edited, cancel the edit state
+            if (editingReminderIdInput?.value === reminderId) {
+                 cancelEditReminder();
+            }
+
             renderReminders(); // Update UI
             showNotification("Reminder deleted.", "warning");
             // --- End confirmation ---
@@ -128,84 +136,85 @@ function startReminderChecker() {
     // Clear any existing interval first to avoid duplicates
     if (activeReminderInterval) {
         clearInterval(activeReminderInterval);
-        console.log("Cleared existing reminder checker interval.");
+        // console.log("Cleared existing reminder checker interval."); // Less verbose
     }
 
-    console.log(`Starting reminder checker (interval: ${REMINDER_CHECK_INTERVAL / 1000}s)`);
+    // console.log(`Starting reminder checker (interval: ${REMINDER_CHECK_INTERVAL / 1000}s)`); // Less verbose
     activeReminderInterval = setInterval(checkReminders, REMINDER_CHECK_INTERVAL);
-
-    // Initial check immediately (optional)
-    // checkReminders();
 }
 
-/**
- * Checks the reminders array for any due reminders and triggers alerts.
- */
+// Inside test/js/reminders.js
 function checkReminders() {
     const now = Date.now();
-    let reminderTriggeredThisCheck = false; // Flag to potentially only trigger one per check
+    let reminderTriggeredThisCheck = false;
+    console.log(`Checking reminders at ${now}`); // Log: Check start
 
-    // Check if any modal is already open (except the reminder alert itself)
     const isOtherModalOpen = document.querySelector('.modal[style*="display: flex"]:not(#reminder-alert-modal)');
     if (isOtherModalOpen) {
-        // console.log("Reminder check skipped: Another modal is open.");
-        return; // Don't trigger reminder if user is busy with another modal
+        console.log("Reminder check skipped: Another modal is open."); // Log: Modal skip
+        return;
     }
 
-    // Find the first untriggered reminder that is due
-    const dueReminder = reminders.find(r => !r.triggered && r.time <= now);
+    reminders.forEach(reminder => {
+        if (reminder.triggered && !reminder.isPersistent) return;
 
-    if (dueReminder) {
-        console.log(`Reminder due: ${dueReminder.text}`);
+        // Log before the check
+        // console.log(`Evaluating reminder: ${reminder.id}, Due: ${reminder.time}, Now: ${now}`);
 
-        // Mark as triggered (prevent re-triggering FOR NOW, snooze will reset it)
-        dueReminder.triggered = true;
-        saveReminders(); // Save the triggered state
+        if (reminder.time <= now) {
+             // Log inside the 'if due' block
+             console.log(`Reminder IS DUE: <span class="math-inline">\{reminder\.id\} \- "</span>{reminder.text}"`);
 
-        // Show the alert modal, passing the reminder object
-        // Ensure showReminderAlertModal exists (defined in modals.js)
-        if (typeof showReminderAlertModal === 'function') {
-             showReminderAlertModal(dueReminder); // Pass the whole object
-        } else {
-             console.error("showReminderAlertModal function not found!");
-             // Fallback notification if modal function is missing
-             showNotification(`Reminder: ${dueReminder.text}`, 'warning');
-        }
+             if (reminder.isPersistent && reminder.triggered) {
+                  console.log(`Persistent reminder ${reminder.id} due again (re-alert logic TBD).`);
+                  return;
+             }
 
+             console.log(`   Marking reminder ${reminder.id} as triggered.`);
+             reminder.triggered = true;
+             reminderTriggeredThisCheck = true;
 
-        // Play the looping alarm sound
-        playReminderAlarm(); // Defined in audio.js
+             // --- Log right before calling the modal function ---
+             console.log(`   Attempting to call showReminderAlertModal for reminder ${reminder.id}...`);
+             if (typeof showReminderAlertModal === 'function') {
+                  showReminderAlertModal(reminder);
+                  console.log(`   Called showReminderAlertModal for reminder ${reminder.id}.`); // Log after call
+             } else {
+                  console.error("   showReminderAlertModal function not found!");
+                  showNotification(`Reminder: ${reminder.text}`, 'warning');
+             }
 
-        // Trigger confetti
-        if (typeof confetti === 'function') {
-            confetti({
-                particleCount: 150,
-                spread: 90,
-                origin: { y: 0.6 },
-                zIndex: 205 // Ensure high z-index
-            });
-        }
+             // Play alarm sound
+             console.log(`   Attempting to play reminder alarm...`); // Log before sound
+             if(typeof playReminderAlarm === 'function') { playReminderAlarm(); }
 
-        // Re-render the list to potentially remove/update the triggered reminder visually
+             // Trigger confetti
+             console.log(`   Attempting to show confetti...`); // Log before confetti
+             if (typeof confetti === 'function') {
+                  confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 }, zIndex: 205 });
+             }
+
+        } // End if due
+    }); // End forEach
+
+    if (reminderTriggeredThisCheck) {
+        console.log("Saving reminders after triggering."); // Log: Saving
+        saveReminders();
         if (viewReminders && viewReminders.classList.contains('view-visible')) {
+            console.log("Rendering reminders view after triggering."); // Log: Rendering
             renderReminders();
         }
-
-        reminderTriggeredThisCheck = true;
-        // If we only want one alert at a time, we could stop checking here.
     }
-
-    // Optional: Clean up very old, triggered reminders (e.g., older than a day)
-    // ... (keep existing cleanup logic if desired) ...
 }
 
 
 /**
  * Snoozes a reminder by a specified number of minutes.
+ * Now uses the provided snoozeMinutes argument.
  * @param {string} reminderId - The ID of the reminder to snooze.
- * @param {number} [snoozeMinutes=5] - How many minutes to snooze for.
+ * @param {number} snoozeMinutes - How many minutes to snooze for.
  */
-function snoozeReminder(reminderId, snoozeMinutes = 5) {
+function snoozeReminder(reminderId, snoozeMinutes) {
     const reminderIndex = reminders.findIndex(r => r.id === reminderId);
     if (reminderIndex === -1) {
         console.error("Reminder not found for snoozing:", reminderId);
@@ -217,11 +226,9 @@ function snoozeReminder(reminderId, snoozeMinutes = 5) {
     const now = Date.now();
     const snoozeMillis = snoozeMinutes * 60 * 1000;
 
-    // Calculate new time based on the *original* scheduled time OR current time,
-    // whichever is later, plus the snooze duration. This prevents snoozing into the past
-    // if the alert was delayed significantly.
-    const baseTime = Math.max(reminder.time, now);
-    reminder.time = baseTime + snoozeMillis;
+    // Calculate new time based on the *current time* plus the snooze duration.
+    // This ensures snooze always moves forward from now.
+    reminder.time = now + snoozeMillis;
     reminder.triggered = false; // Reset triggered flag so it can trigger again
 
     saveReminders(); // Save the updated time and triggered status
@@ -234,5 +241,5 @@ function snoozeReminder(reminderId, snoozeMinutes = 5) {
     showNotification(`Reminder snoozed for ${snoozeMinutes} minutes.`, 'info');
 
      // Ensure the checker keeps running
-     startReminderChecker();
+     startReminderChecker(); // Restarting ensures check timing is reasonable
 }

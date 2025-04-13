@@ -567,47 +567,236 @@ function populateTaskSuggestions() {
 }
 
 // --- Drag and Drop Functions ---
-function handleTaskDragStart(event) { /* ... (keep existing code) ... */ }
-function handleTaskDragEnd(event) { /* ... (keep existing code) ... */ }
-function handleTaskDragOver(event) { /* ... (keep existing code) ... */ }
-function handleTaskDragEnter(event) { /* ... (keep existing code) ... */ }
-function handleTaskDragLeave(event) { /* ... (keep existing code) ... */ }
-function handleTaskDrop(event) { /* ... (keep existing code) ... */ }
+// js/tasks.js
 
+// --- Task Drag and Drop Handlers ---
+
+/** Handles start of drag */
+function handleTaskDragStart(event) {
+    // Find the task item element being dragged
+    const taskElement = event.target.closest('.task-item');
+    if (!taskElement || !taskElement.dataset.taskId) return;
+
+    draggedTaskId = taskElement.dataset.taskId; // Store the ID of the task being dragged
+    event.dataTransfer.setData('text/plain', draggedTaskId); // Set data for transfer
+    event.dataTransfer.effectAllowed = 'move'; // Indicate it's a move operation
+
+    // Add visual feedback (slight delay to ensure effect is applied)
+    setTimeout(() => {
+        taskElement.classList.add('opacity-50'); // Make dragged item semi-transparent
+    }, 0);
+}
+
+/** Handles end of drag */
+function handleTaskDragEnd(event) {
+    const taskElement = event.target.closest('.task-item');
+    if (taskElement) {
+        taskElement.classList.remove('opacity-50'); // Remove transparency on drag end
+    }
+    draggedTaskId = null; // Clear the dragged task ID state
+    // Remove highlighting from all potential drop zones
+    document.querySelectorAll('.drop-zone-active').forEach(el => el.classList.remove('drop-zone-active'));
+}
+
+/** Handles drag over a potential drop zone */
+function handleTaskDragOver(event) {
+    event.preventDefault(); // Necessary to allow dropping
+    // Set drop effect (visual cue, often handled by browser/OS)
+    event.dataTransfer.dropEffect = 'move';
+}
+
+/** Handles drag entering a potential drop zone */
+function handleTaskDragEnter(event) {
+    event.preventDefault(); // Prevent default behavior
+    const dropZone = event.target.closest('.project-group');
+    // Highlight the drop zone if it's a valid project group
+    if (dropZone && dropZone.dataset.projectId) {
+        dropZone.classList.add('drop-zone-active');
+    }
+}
+
+/** Handles drag leaving a potential drop zone */
+function handleTaskDragLeave(event) {
+    event.preventDefault();
+    const dropZone = event.target.closest('.project-group');
+    if (dropZone && dropZone.dataset.projectId) {
+        // Only remove highlight if leaving the zone entirely, not just moving between child elements
+        // relatedTarget is the element being entered
+        if (!dropZone.contains(event.relatedTarget)) {
+            dropZone.classList.remove('drop-zone-active');
+        }
+    }
+    // Special case: if leaving from an element that isn't inside a project group, remove active class from all
+    else if (!event.target.closest('.project-group') && event.relatedTarget?.closest('.project-group') !== dropZone) {
+         document.querySelectorAll('.drop-zone-active').forEach(el => el.classList.remove('drop-zone-active'));
+    }
+}
+
+/** Handles the actual drop event */
+function handleTaskDrop(event) {
+    event.preventDefault(); // Prevent default drop behavior (like opening link)
+    const dropZone = event.target.closest('.project-group');
+
+    // Ensure we have a dragged task ID and a valid drop zone (project group)
+    if (dropZone && draggedTaskId) {
+        const targetProjectId = dropZone.dataset.projectId;
+        const taskIndex = tasks.findIndex(t => t.id === draggedTaskId);
+
+        // Check if the task exists and is being moved to a *different* project
+        if (taskIndex !== -1 && tasks[taskIndex].projectId !== targetProjectId) {
+            // Update the task's project ID in the state
+            tasks[taskIndex].projectId = targetProjectId;
+            updateProjectLastUsed(targetProjectId); // Mark the target project as used
+            saveTasks(); // Save the updated task list
+            renderTasks(); // Re-render the UI to reflect the move
+
+            // Provide user feedback
+            const targetProjectName = projects.find(p => p.id === targetProjectId)?.name || 'Inbox';
+            showNotification(`Task moved to "${targetProjectName}"!`, 'success');
+        }
+        // Remove highlighting from the drop zone
+        dropZone.classList.remove('drop-zone-active');
+    }
+
+    // Clean up regardless of success
+    draggedTaskId = null;
+    document.querySelectorAll('.drop-zone-active').forEach(el => el.classList.remove('drop-zone-active'));
+}
 
 /**
  * Renders the list of upcoming reminders in the Reminders view.
  */
+/**
+ * Renders the list of upcoming reminders, grouped by date (Overdue, Today, Tomorrow, Upcoming).
+ * Includes relative time, category tags, and edit/delete actions.
+ */
 function renderReminders() {
     if (!reminderListContainer || !reminderListEmptyMsg) return;
-    reminderListContainer.innerHTML = '';
-    const upcomingReminders = reminders
-        .filter(r => !r.triggered)
-        .sort((a, b) => a.time - b.time);
 
-    if (upcomingReminders.length > 0) {
-        reminderListEmptyMsg.style.display = 'none';
-        upcomingReminders.forEach(reminder => {
+    reminderListContainer.innerHTML = ''; // Clear previous content
+    const now = luxon.DateTime.now();
+    const todayStart = now.startOf('day');
+    const tomorrowStart = todayStart.plus({ days: 1 });
+    const dayAfterTomorrowStart = tomorrowStart.plus({ days: 1 });
+
+    // Filter out triggered reminders (unless persistent logic needs them?)
+    // For now, keep filtering triggered ones. Recurrence logic might change this.
+    const activeReminders = reminders
+        .filter(r => !r.triggered) // Filter out already triggered (non-persistent)
+        .sort((a, b) => a.time - b.time); // Sort by time
+
+    // Group reminders
+    const groups = {
+        overdue: activeReminders.filter(r => r.time < todayStart.ts),
+        today: activeReminders.filter(r => r.time >= todayStart.ts && r.time < tomorrowStart.ts),
+        tomorrow: activeReminders.filter(r => r.time >= tomorrowStart.ts && r.time < dayAfterTomorrowStart.ts),
+        upcoming: activeReminders.filter(r => r.time >= dayAfterTomorrowStart.ts)
+    };
+
+    let hasReminders = false;
+
+    // Function to render a group
+    const renderGroup = (title, reminderList) => {
+        if (reminderList.length === 0) return; // Don't render empty groups
+
+        hasReminders = true; // Mark that we have reminders to show
+        const groupContainer = document.createElement('div');
+        groupContainer.className = 'reminder-group mb-4'; // Add margin between groups
+
+        const header = document.createElement('h3');
+        header.className = 'reminder-group-header';
+        header.textContent = title;
+        groupContainer.appendChild(header);
+
+        const listElement = document.createElement('div');
+        listElement.className = 'space-y-2'; // Spacing between items in the group
+
+        reminderList.forEach(reminder => {
             const item = document.createElement('div');
-            item.className = 'reminder-item';
+            item.className = 'reminder-item'; // Use existing class + new styles
             item.dataset.reminderId = reminder.id;
-            const reminderDate = new Date(reminder.time);
-            const timeString = formatTimeForDisplay(reminderDate);
+
+            const relativeTimeStr = getRelativeTimeString(reminder.time);
+            const absoluteTimeStr = formatTimeForDisplay(reminder.time); // Use existing util
+
+            // Build meta string conditionally
+            let metaItems = [];
+            metaItems.push(`<span class="reminder-time-display" title="${absoluteTimeStr}">${relativeTimeStr}</span>`);
+            if (reminder.category) {
+                metaItems.push(`<span class="reminder-category-tag">${reminder.category}</span>`);
+            }
+            if (reminder.isPersistent) {
+                metaItems.push(`<span class="reminder-persistent-icon" title="Persistent Reminder">🔁</span>`);
+            }
+
             item.innerHTML = `
                 <div class="reminder-details">
                     <div class="reminder-text">${reminder.text}</div>
-                    <div class="reminder-time-display">${timeString}</div>
+                    <div class="reminder-meta">
+                        ${metaItems.join(' ')}
+                    </div>
                 </div>
-                <button class="reminder-delete-btn" title="Delete Reminder">${SVG_STRINGS.trash2}</button>`;
-            const deleteBtn = item.querySelector('.reminder-delete-btn');
-            if (deleteBtn) { deleteBtn.onclick = () => deleteReminder(reminder.id); }
-            reminderListContainer.appendChild(item);
+                <div class="reminder-actions">
+                    <button class="reminder-edit-btn" data-reminder-id="${reminder.id}" title="Edit Reminder">
+                        ${SVG_STRINGS.pencil}
+                    </button>
+                    <button class="reminder-delete-btn" data-reminder-id="${reminder.id}" title="Delete Reminder">
+                        ${SVG_STRINGS.trash2}
+                    </button>
+                </div>`;
+
+            // Attach listeners directly here (or rely solely on delegation in main.js)
+            // Using delegation in main.js is generally better, so we just add buttons here.
+            // Example if adding listeners here:
+             const editBtn = item.querySelector('.reminder-edit-btn');
+             const deleteBtn = item.querySelector('.reminder-delete-btn');
+             if(editBtn && typeof handleEditReminderClick === 'function') { editBtn.onclick = () => handleEditReminderClick(reminder.id); }
+             if(deleteBtn && typeof deleteReminder === 'function') { deleteBtn.onclick = () => deleteReminder(reminder.id); }
+
+            listElement.appendChild(item);
         });
+        groupContainer.appendChild(listElement);
+        reminderListContainer.appendChild(groupContainer);
+    };
+
+    // Render each group
+    renderGroup('Overdue', groups.overdue);
+    renderGroup('Today', groups.today);
+    renderGroup('Tomorrow', groups.tomorrow);
+    renderGroup('Upcoming', groups.upcoming);
+
+    // Show/hide the empty message
+    if (hasReminders) {
+        reminderListEmptyMsg.style.display = 'none';
     } else {
         reminderListEmptyMsg.style.display = 'block';
         reminderListEmptyMsg.textContent = 'No upcoming reminders set.';
     }
 }
+
+/**
+ * Gets a relative time string (e.g., "in 5 minutes", "yesterday") using Luxon.
+ * Falls back to absolute time if Luxon fails or timestamp is invalid.
+ * @param {number} timestamp - The timestamp in milliseconds.
+ * @returns {string} - The relative or absolute time string.
+ */
+function getRelativeTimeString(timestamp) {
+    if (typeof luxon === 'undefined' || !timestamp) {
+        return formatTimeForDisplay(timestamp || Date.now()); // Fallback
+    }
+    try {
+        const dt = luxon.DateTime.fromMillis(timestamp);
+        if (!dt.isValid) {
+             return formatTimeForDisplay(timestamp); // Fallback if timestamp invalid
+        }
+        // Use Luxon's relative time formatting
+        return dt.toRelative() || formatTimeForDisplay(timestamp); // Fallback if toRelative returns null
+    } catch (e) {
+        console.error("Error formatting relative time:", e);
+        return formatTimeForDisplay(timestamp); // Fallback on any error
+    }
+}
+
 
 // --- NLP Time Suggestion Rendering & Handling ---
 /**
@@ -666,62 +855,125 @@ function renderTimeSuggestions(suggestions, formType, appliedIndex) {
 
 /**
  * Applies the selected NLP suggestion to the appropriate form fields and updates the UI.
+ * Only trims the text immediately for non-reminder forms.
  * @param {number} index - The index of the suggestion in currentNlpSuggestions.
  * @param {'manual' | 'inactivity' | 'reminder'} formType - The type of form.
  */
 function applyNlpSuggestionUI(index, formType) {
+    // Ensure index is valid and suggestions exist
     if (index < 0 || !currentNlpSuggestions || index >= currentNlpSuggestions.length) return;
     const suggestion = currentNlpSuggestions[index];
-    if (!suggestion || !(suggestion.startTime instanceof Date) || isNaN(suggestion.startTime)) return;
+    // Ensure suggestion and its startTime are valid
+    if (!suggestion || !(suggestion.startTime instanceof Date) || isNaN(suggestion.startTime)) {
+        console.error("Invalid suggestion or startTime:", suggestion);
+        return;
+    }
 
     const { startTime, endTime } = suggestion;
     let taskInput, dateInput, startInput, endInput, projectSelect, timeInput, targetInputElement;
 
+    // Assign DOM elements based on form type
     switch (formType) {
-        case 'manual': [taskInput, dateInput, startInput, endInput, projectSelect, targetInputElement] = [manualLogTaskInput, manualLogDateInput, manualLogStartInput, manualLogEndInput, manualLogProjectSelect, manualLogProjectSelect]; break;
-        case 'inactivity': [taskInput, dateInput, startInput, endInput, projectSelect, targetInputElement] = [inactivityManualLogTaskInput, inactivityManualLogDateInput, inactivityManualLogStartInput, inactivityManualLogEndInput, inactivityManualLogProjectSelect, inactivityManualLogProjectSelect]; break;
-        case 'reminder': [taskInput, timeInput, targetInputElement] = [reminderTextInput, reminderTimeInput, reminderTimeInput]; break;
-        default: console.error(`Unknown formType "${formType}"`); return;
+        case 'manual':
+            [taskInput, dateInput, startInput, endInput, projectSelect, targetInputElement] =
+                [manualLogTaskInput, manualLogDateInput, manualLogStartInput, manualLogEndInput, manualLogProjectSelect, manualLogProjectSelect];
+            break;
+        case 'inactivity':
+             [taskInput, dateInput, startInput, endInput, projectSelect, targetInputElement] =
+                 [inactivityManualLogTaskInput, inactivityManualLogDateInput, inactivityManualLogStartInput, inactivityManualLogEndInput, inactivityManualLogProjectSelect, inactivityManualLogProjectSelect];
+             break;
+        case 'reminder':
+            [taskInput, timeInput, targetInputElement] =
+                [reminderTextInput, reminderTimeInput, reminderTimeInput];
+            break;
+        default:
+            console.error(`Unknown formType "${formType}" in applyNlpSuggestionUI`);
+            return;
     }
-    if (!taskInput) { console.error(`Task input not found for form type "${formType}"`); return; }
 
+    // Check if primary input element exists
+    if (!taskInput) {
+        console.error(`Task input not found for form type "${formType}"`);
+        return;
+    }
+
+    // --- Apply time values based on form type ---
     if (formType === 'reminder') {
+        // Ensure reminder time input exists
         if (timeInput) {
-            const year = startTime.getFullYear();
-            const month = (startTime.getMonth() + 1).toString().padStart(2, '0');
-            const day = startTime.getDate().toString().padStart(2, '0');
-            const hours = startTime.getHours().toString().padStart(2, '0');
-            const minutes = startTime.getMinutes().toString().padStart(2, '0');
-            timeInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+             try {
+                 // Format for datetime-local input (YYYY-MM-DDTHH:mm)
+                 const year = startTime.getFullYear();
+                 const month = (startTime.getMonth() + 1).toString().padStart(2, '0');
+                 const day = startTime.getDate().toString().padStart(2, '0');
+                 const hours = startTime.getHours().toString().padStart(2, '0');
+                 const minutes = startTime.getMinutes().toString().padStart(2, '0');
+                 timeInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+             } catch(e) { console.error("Error formatting time for reminder input:", e); }
         } else { console.error("Reminder time input not found."); }
-    } else {
-        if (!dateInput || !startInput || !endInput) { console.error(`Log time inputs not found for form type "${formType}".`); }
-        else {
-            if (startTime instanceof Date && !isNaN(startTime)) {
-                dateInput.value = getDateString(startTime);
-                startInput.value = formatTimeHHMM(startTime.getHours(), startTime.getMinutes());
-            } else { console.error("Invalid startTime for log suggestion."); }
-            if (endTime instanceof Date && !isNaN(endTime)) {
-                endInput.value = formatTimeHHMM(endTime.getHours(), endTime.getMinutes());
-            } else { console.error("Invalid endTime for log suggestion."); }
+    } else { // For 'manual' or 'inactivity' log forms
+        // Ensure log time inputs exist
+        if (!dateInput || !startInput || !endInput) {
+             console.error(`Log time inputs not found for form type "${formType}".`);
+        } else {
+             try {
+                 // Ensure start and end times are valid Date objects before formatting
+                 if (startTime instanceof Date && !isNaN(startTime)) {
+                     dateInput.value = getDateString(startTime); // Use existing util
+                     startInput.value = formatTimeHHMM(startTime.getHours(), startTime.getMinutes()); // Use existing util
+                 } else { console.error("Invalid startTime for log suggestion."); }
+
+                 if (endTime instanceof Date && !isNaN(endTime)) {
+                     // Ensure end date matches start date if time range is within same day
+                     if (getDateString(endTime) !== getDateString(startTime)) {
+                          console.warn("Log suggestion spans across midnight, setting date based on start time.");
+                          // Optionally adjust end time display or logic if needed
+                     }
+                     endInput.value = formatTimeHHMM(endTime.getHours(), endTime.getMinutes()); // Use existing util
+                 } else { console.error("Invalid endTime for log suggestion."); }
+             } catch(e) { console.error("Error formatting time for log inputs:", e); }
         }
     }
 
+    // --- Conditionally trim the text input ---
     let originalText = taskInput.value;
-    if (typeof extractCoreText === 'function') {
-        let trimmedText = extractCoreText(originalText);
-        if(trimmedText !== originalText.trim()) { taskInput.value = trimmedText; }
-    } else { console.error("extractCoreText function not defined."); }
+    // <<<< START OF CHANGE >>>>
+    // Only extract/trim text immediately if NOT dealing with a reminder
+    if (formType !== 'reminder') {
+         if (typeof extractCoreText === 'function') {
+              let trimmedText = extractCoreText(originalText);
+              // Only update if trimming actually changed something substantial
+              // and didn't just result in an empty string from a non-empty original
+              if(trimmedText.trim() !== originalText.trim() && trimmedText.trim().length > 0) {
+                   taskInput.value = trimmedText.trim(); // Use trimmed result
+              } else if (trimmedText.trim().length === 0 && originalText.trim().length > 0) {
+                   // If trimming removed everything meaningful, keep the original text
+                   // This might happen if the input was ONLY the time phrase
+                   taskInput.value = originalText.trim();
+                   console.warn("extractCoreText removed the entire input; keeping original.");
+              }
+              // If trimmedText is the same as originalText, do nothing to the input field
+         } else { console.error("extractCoreText function not defined."); }
+    }
+    // For reminders, leave the text as is for now. Trimming happens on save.
+    // <<<< END OF CHANGE >>>>
 
-    if (appliedNlpSuggestionIndex.hasOwnProperty(formType)) { appliedNlpSuggestionIndex[formType] = index; }
-    else { console.error(`Invalid formType "${formType}" for applied index state.`); }
+    // --- Update applied index and render suggestions ---
+    if (appliedNlpSuggestionIndex.hasOwnProperty(formType)) {
+         appliedNlpSuggestionIndex[formType] = index;
+    } else { console.error(`Invalid formType "${formType}" for applied index state.`); }
 
-    if (typeof renderTimeSuggestions === 'function') { renderTimeSuggestions(currentNlpSuggestions, formType, appliedNlpSuggestionIndex[formType]); }
-    else { console.error("renderTimeSuggestions function not found!"); }
+    if (typeof renderTimeSuggestions === 'function') {
+         renderTimeSuggestions(currentNlpSuggestions, formType, appliedNlpSuggestionIndex[formType]);
+    } else { console.error("renderTimeSuggestions function not found!"); }
 
+    // --- Focus the next logical element ---
     setTimeout(() => {
-         targetInputElement?.focus();
-         if (formType === 'reminder' && typeof renderTimeSuggestions === 'function') { renderTimeSuggestions([], formType, -1); }
+         targetInputElement?.focus(); // Focus the time/date/project input
+         // Hide suggestions immediately after applying for reminders (cleaner UX)
+         if (formType === 'reminder' && typeof renderTimeSuggestions === 'function') {
+              renderTimeSuggestions([], formType, -1);
+         }
     }, 50);
 }
 
@@ -759,6 +1011,12 @@ function renderWidgets() {
                 widgetElement = createCounterWidgetElement(widget);
             } else if (widget.type === 'countdown') {
                 widgetElement = createCountdownWidgetElement(widget);
+            // --- START ADDED CODE ---
+            } else if (widget.type === 'memory-game') {
+                widgetElement = createMemoryGameWidgetElement(widget);
+            } else if (widget.type === 'reflex-game') {
+                widgetElement = createReflexGameWidgetElement(widget);
+            // --- END ADDED CODE ---
             }
             // Add more widget types here with 'else if'
 
@@ -768,6 +1026,14 @@ function renderWidgets() {
                 if (widget.type === 'countdown') {
                     updateCustomCountdownDisplay(widget.id, widgetElement);
                 }
+                 // If it's a memory game, render the initial state if needed
+                 if (widget.type === 'memory-game' && typeof renderMemoryGameBoard === 'function') {
+                     renderMemoryGameBoard(widget.id, widgetElement); // We'll define this helper later if needed
+                 }
+                 // If it's a reflex game, update display based on state
+                 if (widget.type === 'reflex-game' && typeof updateReflexGameDisplay === 'function') {
+                     updateReflexGameDisplay(widget.id, widgetElement); // We'll define this helper later
+                 }
             }
         });
     }
@@ -846,6 +1112,197 @@ function createCountdownWidgetElement(widget) {
         </div>
     `;
     return card;
+}
+
+/**
+ * Creates the HTML element for a Memory Game widget.
+ * @param {object} widget - The widget object from the state.
+ * @returns {HTMLElement} The widget card element.
+ */
+function createMemoryGameWidgetElement(widget) {
+    const card = document.createElement('div');
+    card.className = 'widget-card memory-game-widget'; // Add specific class
+    card.dataset.widgetId = widget.id;
+
+    // Basic structure: Title, Delete, Grid Area, Info, Controls
+    card.innerHTML = `
+        <button class="widget-delete-button" data-action="delete" title="Delete Widget">
+            ${SVG_STRINGS.x}
+        </button>
+        <h3 class="widget-title">${widget.title}</h3>
+
+        <div class="memory-game-grid" data-role="game-grid">
+            </div>
+
+        <div class="memory-game-info mt-2 text-center text-sm" data-role="game-info">
+            Moves: <span data-role="moves">0</span>
+        </div>
+
+        <div class="mt-3 text-center">
+            <button class="game-widget-button" data-action="memory-new-game">
+                New Game
+            </button>
+        </div>
+    `;
+    // Note: We will populate the grid and update info dynamically in main.js
+    return card;
+}
+
+/**
+ * Creates the HTML element for a Reflex Game widget.
+ * @param {object} widget - The widget object from the state.
+ * @returns {HTMLElement} The widget card element.
+ */
+function createReflexGameWidgetElement(widget) {
+    const card = document.createElement('div');
+    card.className = 'widget-card reflex-game-widget'; // Add specific class
+    card.dataset.widgetId = widget.id;
+
+    // Basic structure: Title, Delete, Game Area, Info, Controls
+    card.innerHTML = `
+        <button class="widget-delete-button" data-action="delete" title="Delete Widget">
+            ${SVG_STRINGS.x}
+        </button>
+        <h3 class="widget-title">${widget.title}</h3>
+
+        <div class="reflex-game-area" data-role="game-area">
+            <div class="reflex-target" data-role="target"></div>
+        </div>
+
+        <div class="reflex-game-info mt-2 text-center text-sm" data-role="game-info">
+            Score: <strong data-role="score">0</strong> | Misses: <strong data-role="misses">0</strong>
+        </div>
+
+        <div class="mt-3 text-center">
+            <button class="game-widget-button" data-action="reflex-start-round">
+                Start Round
+            </button>
+             <button class="game-widget-button ml-2 bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-500" data-action="reflex-reset-score">
+                 Reset Score
+             </button>
+        </div>
+    `;
+    // Note: Target visibility/position and score updates handled in main.js
+    return card;
+}
+
+
+/**
+ * Renders the memory game board based on the widget's current state.
+ * @param {string} widgetId - The ID of the memory game widget.
+ * @param {HTMLElement} widgetElement - The DOM element of the widget card.
+ */
+function renderMemoryGameBoard(widgetId, widgetElement) {
+    const widget = widgets.find(w => w.id === widgetId);
+    if (!widget || widget.type !== 'memory-game' || !widgetElement) return;
+
+    const gridContainer = widgetElement.querySelector('[data-role="game-grid"]');
+    const infoContainer = widgetElement.querySelector('[data-role="game-info"]');
+    const newGameButton = widgetElement.querySelector('[data-action="memory-new-game"]');
+    if (!gridContainer || !infoContainer || !newGameButton) return;
+
+    gridContainer.innerHTML = ''; // Clear previous cards
+
+    if (!widget.state.isGameActive && !widget.state.isComplete) {
+        gridContainer.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400 text-center col-span-4">Click "New Game" to start!</p>';
+        infoContainer.innerHTML = ''; // Clear moves display
+        return; // Don't render cards if game hasn't started
+    }
+
+    // Render cards based on state
+    widget.state.cards.forEach((cardValue, index) => {
+        const cardElement = document.createElement('div');
+        cardElement.className = 'memory-card';
+        cardElement.dataset.cardIndex = index; // Store index for click handling
+
+        const isFlipped = widget.state.flippedIndices.includes(index);
+        const isMatched = widget.state.matchedPairs.includes(cardValue); // Check if the *value* is matched
+
+        // Add front (icon/value) and back faces
+        cardElement.innerHTML = `
+            <div class="memory-card-face memory-card-back"></div>
+            <div class="memory-card-face memory-card-front">${cardValue}</div>
+        `;
+
+        // Apply classes based on state
+        if (isFlipped || isMatched) {
+            cardElement.classList.add('is-flipped');
+        }
+        if (isMatched) {
+            cardElement.classList.add('is-matched');
+        }
+
+        // Add click listener only if the card is not matched and the game is active
+        if (!isMatched && widget.state.isGameActive) {
+            cardElement.addEventListener('click', handleMemoryCardClick); // Use shared handler
+        }
+
+        gridContainer.appendChild(cardElement);
+    });
+
+    // Update info display
+    updateMemoryGameInfo(widgetId, widgetElement);
+
+    // Update button text if game is complete
+    if(widget.state.isComplete) {
+         newGameButton.textContent = "Play Again?";
+    } else {
+         newGameButton.textContent = "New Game";
+    }
+}
+
+/**
+ * Updates the information display (moves, status) for a memory game widget.
+ * @param {string} widgetId - The ID of the memory game widget.
+ * @param {HTMLElement} widgetElement - The DOM element of the widget card.
+ */
+function updateMemoryGameInfo(widgetId, widgetElement) {
+     const widget = widgets.find(w => w.id === widgetId);
+     if (!widget || widget.type !== 'memory-game' || !widgetElement) return;
+
+     const infoContainer = widgetElement.querySelector('[data-role="game-info"]');
+     if (!infoContainer) return;
+
+     let statusText = `Moves: <span data-role="moves">${widget.state.moves}</span>`;
+     if (widget.state.isComplete) {
+         statusText += ' - <span class="text-green-600 dark:text-green-400 font-semibold">Complete!</span>';
+     } else if (!widget.state.isGameActive && widget.state.moves === 0) {
+          statusText = '<span class="text-gray-500 dark:text-gray-400">Ready</span>'; // Show Ready state before first game
+     }
+     infoContainer.innerHTML = statusText;
+}
+
+
+/**
+ * Updates the display (score, misses, button state) for a reflex game widget.
+ * @param {string} widgetId - The ID of the reflex game widget.
+ * @param {HTMLElement} widgetElement - The DOM element of the widget card.
+ */
+function updateReflexGameDisplay(widgetId, widgetElement) {
+    const widget = widgets.find(w => w.id === widgetId);
+    if (!widget || widget.type !== 'reflex-game' || !widgetElement) return;
+
+    const scoreElement = widgetElement.querySelector('[data-role="score"]');
+    const missesElement = widgetElement.querySelector('[data-role="misses"]');
+    const startButton = widgetElement.querySelector('[data-action="reflex-start-round"]');
+    // const targetElement = widgetElement.querySelector('[data-role="target"]'); // Target visibility handled in main.js
+
+    if (scoreElement) scoreElement.textContent = widget.state.score;
+    if (missesElement) missesElement.textContent = widget.state.misses;
+
+    // Update button text/state based on game status
+    if (startButton) {
+         if (widget.state.gameStatus === 'playing') {
+              startButton.textContent = 'Round Active...';
+              startButton.disabled = true;
+         } else if (widget.state.gameStatus === 'finished') {
+              startButton.textContent = 'Start New Round';
+              startButton.disabled = false;
+         } else { // ready
+              startButton.textContent = 'Start Round';
+              startButton.disabled = false;
+         }
+    }
 }
 
 // --- End Widget Rendering ---

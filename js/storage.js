@@ -246,19 +246,175 @@ function saveReminders() {
 }
 
 /**
+ * Saves a reminder (handles both adding new and updating existing).
+ * Reads current values from the input fields, trims text just before saving.
+ */
+function saveReminder() {
+    console.log("Attempting to save reminder..."); // Logging: Start
+
+    // Ensure required elements exist
+    if (!reminderTextInput || !reminderTimeInput || !reminderCategoryInput || !reminderPersistentCheckbox || !editingReminderIdInput || !addReminderButton) {
+        console.error("Reminder input elements not found for saving reminder.");
+        showNotification("Error saving reminder: Missing elements.", "error");
+        return;
+    }
+
+    // Get values from inputs
+    const rawReminderText = reminderTextInput.value.trim();
+    const timeValue = reminderTimeInput.value;
+    const category = reminderCategoryInput.value.trim();
+    const isPersistent = reminderPersistentCheckbox.checked;
+    const reminderIdToEdit = editingReminderIdInput.value;
+
+    console.log(`Raw values - Text: "${rawReminderText}", TimeVal: "${timeValue}", Category: "${category}", Persistent: ${isPersistent}, EditingID: "${reminderIdToEdit || 'None'}"`); // Logging: Values
+
+    // --- Validation ---
+    if (!rawReminderText) {
+        showNotification("Please enter reminder text.", "warning");
+        reminderTextInput.focus();
+        console.log("Save failed: Reminder text empty."); // Logging: Validation fail
+        return;
+    }
+    if (!timeValue) {
+        showNotification("Please select or enter a date and time for the reminder.", "warning");
+        reminderTimeInput.focus();
+        console.log("Save failed: Reminder time empty."); // Logging: Validation fail
+        return;
+    }
+
+    const reminderTime = new Date(timeValue).getTime();
+
+    if (isNaN(reminderTime)) {
+        showNotification("Invalid date/time selected.", "error");
+        reminderTimeInput.focus();
+        console.log("Save failed: Invalid reminder time value."); // Logging: Validation fail
+        return;
+    }
+
+    // Allow saving reminders slightly in the past if editing, but not new ones
+    if (!reminderIdToEdit && reminderTime <= Date.now() + 1000) { // Use 1 sec buffer
+        showNotification("New reminder time must be in the future.", "warning");
+        reminderTimeInput.focus();
+        console.log("Save failed: New reminder time not in future."); // Logging: Validation fail
+        return;
+    }
+    // --- End Validation ---
+
+    // --- Extract core text AFTER validation and BEFORE saving ---
+    let finalReminderText = rawReminderText;
+    console.log(`Text before extraction: "${rawReminderText}"`); // Logging: Before extraction
+    if (typeof extractCoreText === 'function') {
+         try {
+             finalReminderText = extractCoreText(rawReminderText);
+             if (!finalReminderText.trim() && rawReminderText) {
+                  finalReminderText = rawReminderText; // Fallback
+                  console.warn("Using raw text for reminder as extraction resulted in empty string.");
+             } else {
+                  finalReminderText = finalReminderText.trim(); // Ensure result is trimmed
+             }
+         } catch (e) {
+              console.error("Error during extractCoreText:", e);
+              finalReminderText = rawReminderText; // Fallback
+              showNotification("Warning: Could not parse time phrase from text.", "warning");
+         }
+    } else {
+         console.error("extractCoreText function not found! Reminder text might include time phrase.");
+         finalReminderText = rawReminderText; // Fallback
+    }
+    console.log(`Text after extraction: "${finalReminderText}"`); // Logging: After extraction
+
+    // --- Create or Update Reminder Object ---
+    const reminderData = {
+        // id handled below
+        text: finalReminderText,
+        time: reminderTime,
+        triggered: false, // Reset triggered state on save/update
+        category: category || '', // Ensure category is at least empty string
+        isPersistent: isPersistent,
+        recurrenceRule: null // Placeholder for future recurrence feature
+    };
+
+    let notificationMessage = '';
+    let isUpdate = false;
+
+    if (reminderIdToEdit) {
+        // --- Updating existing reminder ---
+        console.log(`Updating reminder with ID: ${reminderIdToEdit}`); // Logging: Update path
+        const index = reminders.findIndex(r => r.id === reminderIdToEdit);
+        if (index > -1) {
+            reminders[index] = { ...reminders[index], ...reminderData, id: reminderIdToEdit };
+             notificationMessage = "Reminder updated!";
+             isUpdate = true;
+             console.log("Updated reminder object:", reminders[index]); // Logging: Updated object
+        } else {
+            console.error("Could not find reminder to update with ID:", reminderIdToEdit);
+            showNotification("Error updating reminder.", "error");
+            return; // Don't clear form if update failed
+        }
+    } else {
+        // --- Adding new reminder ---
+        console.log("Adding new reminder"); // Logging: Add path
+        reminderData.id = generateUniqueId('reminder');
+        reminders.push(reminderData);
+        notificationMessage = "Reminder added!";
+         console.log("Added reminder object:", reminderData); // Logging: Added object
+    }
+
+    // --- Save, Render, Clear Form ---
+    saveReminders(); // Assumes this exists in storage.js
+    if(typeof renderReminders === 'function') {
+        renderReminders(); // Assumes this exists in ui.js
+    } else {
+        console.error("renderReminders function not found!");
+    }
+
+    // Clear form and reset edit state using the dedicated function
+    if (typeof cancelEditReminder === 'function') {
+         cancelEditReminder();
+    } else {
+         console.error("cancelEditReminder function not found! Attempting manual cleanup.");
+         // Manual fallback cleanup if function missing
+         editingReminderIdInput.value = '';
+         reminderTextInput.value = '';
+         reminderTimeInput.value = '';
+         reminderCategoryInput.value = '';
+         reminderPersistentCheckbox.checked = false;
+         if(addReminderButton) addReminderButton.textContent = "Add Reminder";
+         if(cancelEditReminderButton) cancelEditReminderButton.style.display = 'none';
+    }
+
+    // Clear NLP suggestions state (safe to do even if cancelEditReminder does it)
+    currentNlpSuggestions = [];
+    appliedNlpSuggestionIndex.reminder = -1;
+    if(typeof renderTimeSuggestions === 'function') { renderTimeSuggestions([], 'reminder', -1); }
+
+
+    showNotification(notificationMessage, isUpdate ? 'info' : 'success');
+    console.log("Reminder save process completed."); // Logging: End
+}
+
+/**
  * Loads reminders from local storage into the reminders array.
- * Performs basic validation.
+ * Performs basic validation and handles new optional properties.
  */
 function loadReminders() {
     try {
         const storedReminders = localStorage.getItem(LS_REMINDERS_KEY);
         if (storedReminders) {
             const loaded = JSON.parse(storedReminders);
+            // Filter for basic validity and map to ensure all properties exist
             reminders = loaded.filter(r =>
                 r && typeof r === 'object' && r.id && r.text && typeof r.time === 'number'
             ).map(r => ({
-                ...r,
-                triggered: r.triggered || false
+                id: r.id,
+                text: r.text,
+                time: r.time,
+                triggered: r.triggered || false,
+                // --- START ADDED CODE: Handle new optional properties ---
+                category: r.category || '', // Default to empty string if missing
+                isPersistent: r.isPersistent || false, // Default to false if missing
+                recurrenceRule: r.recurrenceRule || null // Default to null if missing (for future use)
+                // --- END ADDED CODE ---
             }));
         } else {
             reminders = [];
@@ -268,9 +424,14 @@ function loadReminders() {
         reminders = [];
         showNotification("Error loading reminders.", "error");
     }
+
+    // Filter out reminders that are already past and triggered
+    // Note: This logic might need adjustment if recurring reminders are fully implemented
     const now = Date.now();
     const initialLength = reminders.length;
     reminders = reminders.filter(r => r.time >= now || !r.triggered);
+
+    // Save back if any past, triggered reminders were filtered out
     if (reminders.length < initialLength) {
         saveReminders();
     }
@@ -331,9 +492,38 @@ function loadWidgets() {
                             // intervalId is not loaded/saved
                         }
                     };
+                // --- START ADDED CODE for Game Widgets ---
+                } else if (w.type === 'memory-game') {
+                    // Ensure default state for memory game exists
+                    return {
+                        ...w,
+                        state: {
+                            cards: Array.isArray(w.state.cards) ? w.state.cards : [], // Grid state
+                            flippedIndices: Array.isArray(w.state.flippedIndices) ? w.state.flippedIndices : [], // Currently flipped
+                            matchedPairs: Array.isArray(w.state.matchedPairs) ? w.state.matchedPairs : [], // Matched cards
+                            moves: typeof w.state.moves === 'number' ? w.state.moves : 0,
+                            isGameActive: typeof w.state.isGameActive === 'boolean' ? w.state.isGameActive : false, // Is a game currently being played?
+                            isComplete: typeof w.state.isComplete === 'boolean' ? w.state.isComplete : false // Is the current game won?
+                        }
+                    };
+                } else if (w.type === 'reflex-game') {
+                     // Ensure default state for reflex game exists
+                     return {
+                         ...w,
+                         state: {
+                             score: typeof w.state.score === 'number' ? w.state.score : 0,
+                             misses: typeof w.state.misses === 'number' ? w.state.misses : 0,
+                             isActive: typeof w.state.isActive === 'boolean' ? w.state.isActive : false, // Is target currently shown?
+                             gameStatus: ['ready', 'playing', 'finished'].includes(w.state.gameStatus) ? w.state.gameStatus : 'ready', // Game phase
+                             targetTimeoutId: null // Store timeout ID for the target (not saved/loaded, always null on load)
+                         }
+                     };
+                 // --- END ADDED CODE ---
+                } else {
+                    // Filter out unknown types (or handle them if needed)
+                    console.warn("Loading unknown widget type:", w.type);
+                    return null;
                 }
-                // Filter out unknown types (or handle them if needed)
-                return null;
             }).filter(w => w !== null); // Remove null entries from filtered map
         } else {
             widgets = []; // Initialize if nothing is stored
@@ -343,7 +533,7 @@ function loadWidgets() {
         widgets = []; // Reset on error
         showNotification("Error loading widgets.", "error");
     }
-    // Note: Countdown timers are not automatically restarted on load.
+    // Note: Countdown timers and game states are not automatically restarted on load.
     // User needs to manually start them again.
 }
 // --- End Widget Storage ---

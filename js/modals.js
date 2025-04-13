@@ -218,36 +218,93 @@ function closeShortcutAddTaskModal() {
 
 // *** NEW: Reminder Alert Modal ***
 
-/**
- * Shows the reminder alert modal with the specified text.
- * @param {string} reminderText - The text of the reminder to display.
- */
-function showReminderAlertModal(reminderText) {
-    if (!reminderAlertModal || !reminderAlertText) {
-        console.error("Reminder alert modal elements not found!");
-        return;
-    }
-    // Ensure other modals are closed to avoid overlap? Optional.
-    // closeAllModals(); // You might need a function like this
+// Inside test/js/modals.js
+function showReminderAlertModal(reminder) {
+    console.log("showReminderAlertModal function started for reminder:", reminder); // Log: Function start
 
-    reminderAlertText.textContent = reminderText;
+    // Check required elements
+    if (!reminderAlertModal || !reminderAlertText || !reminderAlertTime || !reminderAckButton) {
+        // Log which specific element might be missing
+        console.error("Reminder alert modal base elements not found!", {
+             modal: !!reminderAlertModal,
+             text: !!reminderAlertText,
+             time: !!reminderAlertTime,
+             ack: !!reminderAckButton
+        });
+        return; // Stop if elements missing
+    }
+    if (!reminder || !reminder.id || !reminder.text || typeof reminder.time !== 'number') {
+        console.error("Invalid reminder object passed to showReminderAlertModal:", reminder);
+        return; // Stop if reminder object invalid
+    }
+
+    currentAlertReminderId = reminder.id;
+    reminderAlertText.textContent = reminder.text;
+    reminderAlertTime.textContent = `Set for: ${typeof formatTimeForDisplay === 'function' ? formatTimeForDisplay(reminder.time) : new Date(reminder.time).toLocaleTimeString()}`;
+
+    // Log before changing display
+    console.log("   About to set modal display to 'flex'. Current display:", reminderAlertModal.style.display);
     reminderAlertModal.style.display = 'flex';
-    // Focus the Ack button for accessibility
-    setTimeout(() => reminderAckButton?.focus(), 50);
+    // Log after changing display
+    console.log("   Modal display style after set:", reminderAlertModal.style.display); // Check if it stuck
+
+    // Focus Ack button
+    setTimeout(() => {
+        console.log("   Attempting to focus Ack button."); // Log focus attempt
+        reminderAckButton?.focus();
+    }, 50);
 }
 
 /**
- * Closes the reminder alert modal and stops the reminder sound.
+ * Closes the reminder alert modal, stops the reminder sound, and clears the stored reminder ID.
  */
 function closeReminderAlertModal() {
     if (reminderAlertModal) {
         reminderAlertModal.style.display = 'none';
     }
+
+    // Clear the stored reminder ID
+    currentAlertReminderId = null;
+
     // Stop the looping sound (function defined in audio.js)
     if (typeof stopReminderAlarm === 'function') {
         stopReminderAlarm();
     } else {
-        console.error("stopReminderAlarm function not found!");
+        console.warn("stopReminderAlarm function not found!"); // Use warn, not error
+    }
+}
+
+/**
+ * Handles snoozing a reminder by a specific duration.
+ * This function is intended to be called by an event listener (in main.js)
+ * which determines the duration from the clicked button.
+ * @param {number} snoozeMinutes - The number of minutes to snooze for.
+ */
+function handleReminderSnooze(snoozeMinutes) {
+     // Validate snoozeMinutes
+     if (typeof snoozeMinutes !== 'number' || isNaN(snoozeMinutes) || snoozeMinutes <= 0) {
+          console.error("Invalid snooze duration provided:", snoozeMinutes);
+          showNotification("Invalid snooze duration.", "error");
+          // Still close modal and stop sound
+          closeReminderAlertModal();
+          return;
+     }
+
+    if (currentAlertReminderId) {
+        // Ensure snoozeReminder function exists (defined in reminders.js)
+        if (typeof snoozeReminder === 'function') {
+            snoozeReminder(currentAlertReminderId, snoozeMinutes);
+            // snoozeReminder function now shows its own notification
+        } else {
+             console.error("snoozeReminder function not found!");
+             showNotification("Error: Snooze function unavailable.", "error");
+        }
+        // Close modal, which will stop sound and clear ID
+        closeReminderAlertModal();
+    } else {
+        console.warn("Snooze clicked but no currentAlertReminderId was set.");
+        // Still close the modal and stop sound just in case
+        closeReminderAlertModal();
     }
 }
 // *** END NEW ***
@@ -259,7 +316,7 @@ function closeReminderAlertModal() {
  */
 function showReminderAlertModal(reminder) {
     // Check required elements first
-    if (!reminderAlertModal || !reminderAlertText || !reminderAlertTime || !reminderAckButton || !reminderSnoozeButton) {
+    if (!reminderAlertModal || !reminderAlertText || !reminderAlertTime || !reminderAckButton) {
         console.error("Reminder alert modal elements not found!");
         return;
     }

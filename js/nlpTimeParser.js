@@ -235,66 +235,66 @@ function adjustHourForAmPm(hour, ampm) {
 
 /**
  * Extracts the core text, removing matched time phrases (both future and past).
- * Renamed from extractTaskDescription for broader use.
+ * Prioritizes removing future/relative phrases first.
  * @param {string} inputText - The full input text.
  * @returns {string} - The extracted core text.
  */
 function extractCoreText(inputText) {
-    let description = inputText.trim(); // Start with trimmed input
-    if (!description) return ''; // Return empty if input is empty
+    let description = inputText.trim();
+    if (!description) return '';
 
     // Define regex patterns for time phrases to remove.
-    // **ORDER MATTERS**: Place longer/more specific patterns first to avoid partial removals.
+    // **REORDERED**: Place future/relative patterns commonly used for reminders FIRST.
     const timePatterns = [
+        // --- Reminder/Future patterns ---
+        // "in X minutes/hours" <<<< MOVED HIGHER
+        /in\s+\d+\s+(?:minute|min|hr|hour)s?/i,
+        // "tomorrow at X:XX am/pm" (must come before "at X:XX am/pm" and "tomorrow")
+        /tomorrow\s+at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?/i,
+        // "tomorrow" (must come after "tomorrow at X")
+        /tomorrow/i,
+        // "at X:XX am/pm" or "at X am/pm" (ensure it doesn't follow "tomorrow")
+        // Needs careful placement - place after specific log patterns? Or keep here? Let's keep here for now.
+        /(?<!tomorrow\s)at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?/i,
+
         // --- Log patterns with specific start/end or duration ---
         // "from X:XX am/pm to Y:YY am/pm"
         /from\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?\s+to\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?/i,
-        // "at X:XX am/pm for Y minutes/hours"
+        // "at X:XX am/pm for Y minutes/hours" (more specific than just 'at X')
         /at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?\s+for\s+\d+(?:\.\d+)?\s+(?:minute|min|hr|hour)s?/i,
         // "from X:XX am/pm for Y minutes/hours"
         /from\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?\s+for\s+\d+(?:\.\d+)?\s+(?:minute|min|hr|hour)s?/i,
         // "X:XX am/pm for Y minutes/hours" (without 'at'/'from')
         /\d{1,2}(?::\d{2})?\s*(?:am|pm)?\s+for\s+\d+(?:\.\d+)?\s+(?:minute|min|hr|hour)s?/i,
 
-        // --- Reminder/Future patterns ---
-        // "tomorrow at X:XX am/pm" (must come before "at X:XX am/pm")
-        /tomorrow\s+at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?/i,
-        // "tomorrow" (must come after "tomorrow at X")
-        /tomorrow/i,
-        // "at X:XX am/pm" or "at X am/pm" (ensure it doesn't follow "tomorrow")
-        /(?<!tomorrow\s)at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?/i,
-        // "in X minutes/hours"
-        /in\s+\d+\s+(?:minute|min|hr|hour)s?/i,
-
          // --- Log relative patterns (less specific) ---
          // "last X minutes/hours" or "X minutes/hours ago" (with optional leading "for")
         /(?:for\s+)?(?:last\s+)?\d+\s+(?:minute|min|hr|hour)s?(?:\s+ago)?/i,
-        // Fallback for just "X min/hr" (less common to remove this, but included)
-        // This might be too broad, consider removing if it causes issues.
-        // /\b\d+\s+(?:minute|min|hr|hour)s?\b/i
+        // Fallback for just "X min/hr" - This might be too broad. Keep it last or remove if problematic.
+         /\b\d+\s+(?:minute|min|hr|hour)s?\b/i
 
     ];
 
     // Iterate and remove the first matching time phrase found
     for (const pattern of timePatterns) {
-        // Use match to find the *first* occurrence specifically
         const matchResult = description.match(pattern);
         if (matchResult) {
-            // Replace the first matched phrase (matchResult[0]) with an empty string
+            console.log(`extractCoreText matched: "${matchResult[0]}" with pattern: ${pattern}`); // Add logging
+            // Replace the first matched phrase
             description = description.replace(matchResult[0], '').trim();
-            // Clean up potential double spaces resulting from removal
+            // Clean up potential double spaces
             description = description.replace(/\s\s+/g, ' ');
-            // Clean up potential trailing prepositions more robustly
-            description = description.replace(/\s+(?:for|at|from|in|on|to)$/i, '').trim();
-             // Clean up potential leading prepositions more robustly
-             description = description.replace(/^(?:for|at|from|in|on|to)\s+/i, '').trim();
-            // Stop after removing the first (most specific based on pattern order) match
-            // console.log(`Removed phrase matching: ${pattern}, Result: "${description}"`);
-            return description; // Return the description after the first successful removal
+            // Clean up potential trailing/leading prepositions more robustly after removal
+            description = description.replace(/^(for|at|from|in|on|to)\s+/i, '').trim(); // Leading
+            description = description.replace(/\s+(for|at|from|in|on|to)$/i, '').trim(); // Trailing
+            console.log(`extractCoreText result after trim: "${description}"`); // Add logging
+            // Stop after removing the first match
+            return description;
         }
     }
 
     // Return the original (trimmed) text if no pattern was found and removed
+    console.log(`extractCoreText: No time pattern matched for "${inputText.trim()}"`); // Add logging
     return inputText.trim();
 }
 
