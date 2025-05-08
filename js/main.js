@@ -125,7 +125,27 @@ function setupEventListeners() {
               }
          });
     }
-
+    if (featuresOverviewButton) {
+        featuresOverviewButton.addEventListener('click', openFeaturesOverviewModal);
+    }
+    if (closeFeaturesOverviewModalButton) {
+        closeFeaturesOverviewModalButton.addEventListener('click', closeFeaturesOverviewModal);
+    }
+    if (gotItFeaturesButton) {
+        gotItFeaturesButton.addEventListener('click', () => {
+            closeFeaturesOverviewModal();
+            markFeaturesOverviewSeen(); // Mark as seen when user clicks "Got it!"
+        });
+    }
+    if (featuresOverviewModal) { // Close on outside click
+        window.addEventListener('click', (event) => {
+            if (event.target === featuresOverviewModal) {
+                closeFeaturesOverviewModal();
+                // Optionally mark as seen if they close it this way too
+                // markFeaturesOverviewSeen();
+            }
+        });
+    }
     // --- Event Delegation for Snooze buttons in the Alert Modal ---
     if (reminderAlertModal) {
          reminderAlertModal.addEventListener('click', (event) => {
@@ -327,7 +347,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (typeof startReminderChecker === 'function') { startReminderChecker(); }
     else { console.error("startReminderChecker function not found!"); }
-
+    if (!hasSeenFeaturesOverview()) {
+        openFeaturesOverviewModal();
+        // Don't mark as seen here automatically; let the "Got it" button do it.
+        // Or, if you want it marked as seen as soon as it's shown once:
+        // markFeaturesOverviewSeen();
+    }
     console.log("FocusFlow Ready!");
 });
 

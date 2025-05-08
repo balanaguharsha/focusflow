@@ -199,6 +199,16 @@ const addWidgetTitleInput = document.getElementById('add-widget-title');
 const saveWidgetButton = document.getElementById('save-widget-button');
 const cancelAddWidgetButton = document.getElementById('cancel-add-widget-button');
 
+// ... other elements
+
+// Features Overview Modal Elements
+const featuresOverviewModal = document.getElementById('features-overview-modal');
+const closeFeaturesOverviewModalButton = document.getElementById('close-features-overview-modal-button');
+const featuresOverviewButton = document.getElementById('features-overview-button'); // The icon button in header
+const gotItFeaturesButton = document.getElementById('got-it-features-button');
+
+// ... other elements
+
 // Note: Specific widget elements (like counter display, countdown buttons)
 // are no longer static and will be created dynamically in ui.js.
 // We only need the container and the "Add Widget" elements here.

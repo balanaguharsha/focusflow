@@ -94,9 +94,14 @@
 
         <header class="bg-white dark:bg-gray-800 shadow-sm p-4 flex justify-between items-center flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
             <h1 class="text-2xl font-bold text-indigo-700 dark:text-indigo-300">FocusFlow</h1>
-            <button id="settings-button" class="text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-300 p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" title="Settings">
-                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.51a2 2 0 0 1 1-1.72l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-            </button>
+            <div class="flex items-center space-x-2">
+                <button id="features-overview-button" class="text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-300 p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" title="Features Overview">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                </button>
+                <button id="settings-button" class="text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-300 p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" title="Settings">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.51a2 2 0 0 1 1-1.72l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+            </div>
         </header>
 
         <div class="flex justify-center space-x-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 flex-shrink-0">
@@ -342,6 +347,86 @@
         </div>
     </div>
 
+    <div id="features-overview-modal" class="modal">
+        <div class="modal-content relative dark:bg-gray-800 dark:border-gray-600">
+            <span id="close-features-overview-modal-button" class="modal-close-button">&times;</span>
+            <h2 class="text-2xl font-bold mb-6 text-center text-indigo-700 dark:text-indigo-300">Welcome to FocusFlow!</h2>
+
+            <div class="space-y-1 text-gray-700 dark:text-gray-300">
+                <p class="text-lg mb-6 text-center">Key features to boost your productivity:</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                    <div class="feature-item p-3 bg-indigo-50 dark:bg-gray-700 rounded-lg">
+                        <h3 class="font-semibold text-indigo-600 dark:text-indigo-400">🎯 Pomodoro & Tasks</h3>
+                        <ul class="list-disc list-inside text-sm space-y-1 mt-1">
+                            <li>Integrated Pomodoro timer (Work/Break cycles).</li>
+                            <li>Manage tasks with projects.</li>
+                            <li>Project prediction while typing tasks.</li>
+                            <li>Drag & drop tasks between projects.</li>
+                        </ul>
+                    </div>
+
+                    <div class="feature-item p-3 bg-green-50 dark:bg-gray-700 rounded-lg">
+                        <h3 class="font-semibold text-green-600 dark:text-green-400">📅 Smart Logging & Summaries</h3>
+                        <ul class="list-disc list-inside text-sm space-y-1 mt-1">
+                            <li>Automatic logging of Pomodoro sessions.</li>
+                            <li>Manual log with NLP: type <code class="text-xs">"Meeting for 1hr"</code>.</li>
+                            <li>Daily log view with visual summaries.</li>
+                            <li>Aggregated summaries for custom date ranges.</li>
+                        </ul>
+                    </div>
+
+                    <div class="feature-item p-3 bg-teal-50 dark:bg-gray-700 rounded-lg">
+                        <h3 class="font-semibold text-teal-600 dark:text-teal-400">🧠 NLP & Predictions</h3>
+                        <ul class="list-disc list-inside text-sm space-y-1 mt-1">
+                            <li>Natural Language Processing for time input.</li>
+                            <li>Examples: <code class="text-xs">"tomorrow 10am"</code>, <code class="text-xs">"in 30 min"</code>, <code class="text-xs">"last hour"</code>.</li>
+                            <li>Applies to manual logs and reminders.</li>
+                            <li>Automatic project suggestions as you type tasks.</li>
+                        </ul>
+                    </div>
+
+                    <div class="feature-item p-3 bg-yellow-50 dark:bg-gray-700 rounded-lg">
+                        <h3 class="font-semibold text-yellow-600 dark:text-yellow-400">🔔 Reminders</h3>
+                        <ul class="list-disc list-inside text-sm space-y-1 mt-1">
+                            <li>Set reminders for any task or event.</li>
+                            <li>Use natural language for time: <code class="text-xs">"Report due Mon 9am"</code>.</li>
+                            <li>Snooze options for active reminders.</li>
+                            <li>Persistent reminders option.</li>
+                        </ul>
+                    </div>
+
+                    <div class="feature-item p-3 bg-sky-50 dark:bg-gray-700 rounded-lg">
+                        <h3 class="font-semibold text-sky-600 dark:text-sky-400">⌨️ Keyboard Shortcuts</h3>
+                        <ul class="list-disc list-inside text-sm space-y-1 mt-1">
+                            <li>Quick Add Task: <code class="text-xs">Cmd/Ctrl + Shift + H</code>.</li>
+                            <li>Undo Last Completion: <code class="text-xs">Cmd/Ctrl + Shift + Z</code>.</li>
+                            <li>(More shortcuts planned!)</li>
+                        </ul>
+                    </div>
+
+                    <div class="feature-item p-3 bg-purple-50 dark:bg-gray-700 rounded-lg">
+                        <h3 class="font-semibold text-purple-600 dark:text-purple-400">⚙️ Settings & Data</h3>
+                        <ul class="list-disc list-inside text-sm space-y-1 mt-1">
+                            <li>Customize timer durations.</li>
+                            <li>Toggle sounds & dark mode (default: ON).</li>
+                            <li>Manage celebration GIFs.</li>
+                            <li>Import/Export your data.</li>
+                        </ul>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="mt-8 text-center">
+                <button id="got-it-features-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-6 rounded-lg shadow">
+                    Got it!
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div id="settings-modal" class="modal">
         <div class="modal-content relative dark:bg-gray-800 dark:border-gray-600">
             <span id="close-modal-button" class="modal-close-button">&times;</span>
@@ -448,6 +533,7 @@
     <script src="js/inactivity.js"></script>
     <script src="js/summary.js"></script>
     <script src="js/reminders.js"></script>
+    <script src="js/featuresPopup.js"></script>
     <script src="js/main.js"></script>
     <script>
         // Example of potentially using the icon URL later if needed

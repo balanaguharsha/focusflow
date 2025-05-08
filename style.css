@@ -1399,3 +1399,128 @@ html.dark .reminder-delete-btn:hover { background-color: #450a0a; /* dark:hover:
      /* Example: Add specific styling if Tailwind isn't enough */
      /* border: 1px solid #d1d5db; */
 }
+
+/* Features Overview Modal Specific Styles */
+#features-overview-modal .modal-content {
+    /* max-width is already set in HTML, can adjust here if needed */
+    padding: 1.5rem 2rem; /* More horizontal padding */
+}
+
+.feature-item {
+    /* Basic styling done via Tailwind in HTML */
+    /* Add any additional non-Tailwind styles here if needed */
+    border-left-width: 4px;
+    border-left-style: solid;
+}
+
+/* Match border colors to heading colors */
+.feature-item.bg-indigo-50 { border-left-color: #4f46e5; /* Indigo */ }
+.feature-item.bg-green-50 { border-left-color: #10b981; /* Green */ }
+.feature-item.bg-yellow-50 { border-left-color: #f59e0b; /* Yellow */ }
+.feature-item.bg-purple-50 { border-left-color: #8b5cf6; /* Purple */ }
+.feature-item.bg-sky-50 { border-left-color: #0ea5e9; /* Sky */ }
+
+
+html.dark .feature-item.bg-gray-700 {
+    /* No specific border color needed for dark if using colored headings, */
+    /* or choose a neutral dark border like #4b5563 */
+     border-left-color: #6b7280; /* Default dark border */
+}
+/* Override if a specific feature item has a color in dark mode too */
+html.dark .feature-item.bg-gray-700.border-indigo-400 { border-left-color: #818cf8; } /* Example */
+
+
+#features-overview-button .icon {
+    width: 1.4rem; /* Slightly larger for help icon */
+    height: 1.4rem;
+}
+
+/* ... existing styles ... */
+
+/* Features Overview Modal Specific Styles */
+#features-overview-modal .modal-content {
+    /* Previous max-width was here, now removed from HTML for more dynamic control */
+    /* Let's set a new, wider max-width that works well with 2 columns */
+    max-width: 60rem; /* Tailwind: ~screen-md (768px), screen-lg (1024px). 60rem = 960px. Adjust as needed. */
+                     /* On smaller screens, width: 90% will still apply from .modal-content base */
+    width: 95%; /* Take up more width on smaller screens too if possible */
+    padding: 1.5rem 2rem;
+}
+
+@media (min-width: 768px) { /* Medium screens and up (Tailwind's md breakpoint) */
+    #features-overview-modal .modal-content {
+        /* For 2 columns, ensure content isn't too cramped horizontally */
+        padding-left: 2.5rem;
+        padding-right: 2.5rem;
+    }
+}
+
+.feature-item {
+    border-left-width: 4px;
+    border-left-style: solid;
+    display: flex; /* Added for better internal alignment if needed */
+    flex-direction: column; /* Stack heading and paragraph */
+    /* Tailwind classes handle bg and rounded corners */
+}
+
+/* Ensure feature items can stretch if needed within grid cell (usually default) */
+.feature-item h3 {
+    margin-bottom: 0.5rem; /* Add some space between heading and paragraph */
+}
+
+
+/* Match border colors to heading colors (Light Mode) - These remain the same */
+.feature-item.bg-indigo-50 { border-left-color: #4f46e5; }
+.feature-item.bg-green-50 { border-left-color: #10b981; }
+.feature-item.bg-teal-50 { border-left-color: #0d9488; }
+.feature-item.bg-yellow-50 { border-left-color: #f59e0b; }
+.feature-item.bg-sky-50 { border-left-color: #0ea5e9; }
+.feature-item.bg-purple-50 { border-left-color: #8b5cf6; }
+
+/* Dark Mode Adjustments for feature items - These remain the same */
+html.dark .feature-item {
+    border-left-color: #4b5563;
+}
+html.dark .feature-item.bg-gray-700 .text-indigo-400 { border-left-color: #818cf8; }
+html.dark .feature-item.bg-gray-700 .text-green-400 { border-left-color: #34d399; }
+html.dark .feature-item.bg-gray-700 .text-teal-400 { border-left-color: #2dd4bf; }
+html.dark .feature-item.bg-gray-700 .text-yellow-400 { border-left-color: #facc15; }
+html.dark .feature-item.bg-gray-700 .text-sky-400 { border-left-color: #38bdf8; }
+html.dark .feature-item.bg-gray-700 .text-purple-400 { border-left-color: #a78bfa; }
+
+
+/* Styling for inline code tags within the popup - This remains the same */
+.feature-item code {
+    font-size: 0.8em;
+    padding: 0.1em 0.4em;
+    border-radius: 0.25rem;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+#features-overview-button .icon { /* This remains the same */
+    width: 1.3rem;
+    height: 1.3rem;
+}
+
+
+/* ... existing styles ... */
+
+.feature-item ul {
+    /* Tailwind 'list-disc list-inside text-sm space-y-1 mt-1' is quite good. */
+    /* Add custom styles here if needed, e.g., for list-style-image or specific margins */
+    padding-left: 0.5rem; /* Adjust if 'list-inside' isn't giving enough indent */
+}
+
+.feature-item li {
+    /* Add custom styles for list items if needed */
+    margin-bottom: 0.25rem; /* Example: if space-y-1 is not enough */
+}
+
+.feature-item code.text-xs { /* If you added text-xs to code tags */
+    /* font-size: 0.75em; /* Further reduce if needed, but text-xs Tailwind class is good */
+    /* color: #db2777; /* Example custom color for code, but bg-gray-200 is okay */
+}
+
+/* ... rest of your feature-item and modal styles ... */
+
+/* ... existing styles ... */

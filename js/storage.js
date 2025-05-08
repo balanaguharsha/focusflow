@@ -1,6 +1,7 @@
 // js/storage.js
 
 // --- Local Storage Keys ---
+const LS_FEATURES_SEEN_KEY = 'focusFlowFeaturesSeen_v1'; // New key
 const LS_TASKS_KEY = 'pomodoroTasks_v6';
 const LS_PROJECTS_KEY = 'pomodoroProjects_v7';
 const LS_SETTINGS_KEY = 'pomodoroSettings_v10';

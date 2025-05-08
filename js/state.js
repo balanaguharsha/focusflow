@@ -19,7 +19,7 @@ let settings = {
     soundEnabled: true,
     showElapsedTime: false,
     celebrationGifUrls: [],
-    darkModeEnabled: false,
+    darkModeEnabled: true,
     inactivityTimeoutMinutes: 10
 };
 let logEntries = {}; // Object where keys are 'YYYY-MM-DD' strings and values are arrays of log entry objects
