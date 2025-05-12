@@ -1521,6 +1521,17 @@ html.dark .feature-item.bg-gray-700 .text-purple-400 { border-left-color: #a78bf
     /* color: #db2777; /* Example custom color for code, but bg-gray-200 is okay */
 }
 
-/* ... rest of your feature-item and modal styles ... */
+/* Fix for Features Overview Modal feature item backgrounds in dark mode */
+html.dark .feature-item {
+    background-color: #374151 !important; /* Ensure dark gray background */
+    border-color: #4b5563 !important; /* Adjust border color for consistency */
+}
 
-/* ... existing styles ... */
+/* Ensure text contrast within these dark feature items */
+html.dark .feature-item h3 {
+    color: #e0e7ff !important; /* Example: a lighter color for headings */
+}
+
+html.dark .feature-item ul li {
+    color: #d1d5db !important; /* Ensure list item text is visible */
+}
